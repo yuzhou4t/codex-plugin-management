@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend App Builder"
+  short_description: "Build or redesign a visually distinctive frontend"
+  default_prompt: "Redesign this product interface with a coherent visual system, implement it, and verify the result."

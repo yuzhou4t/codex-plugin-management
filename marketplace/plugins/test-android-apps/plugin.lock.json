@@ -1,0 +1,31 @@
+{
+  "lockVersion": 1,
+  "pluginId": "com.openai.test-android-apps",
+  "pluginVersion": "0.1.2",
+  "generatedBy": "plugin-management repository reconciliation",
+  "generatedAt": "2026-07-25T10:30:57Z",
+  "skills": [
+    {
+      "id": "android-emulator-qa",
+      "vendoredPath": "skills/android-emulator-qa",
+      "source": {
+        "type": "github",
+        "repo": "openai/skills-internal",
+        "path": ".codex/skills/android-emulator-qa",
+        "ref": "5a9bf9e14d3e8bdd93f046c01437a2e2f4369b86"
+      },
+      "integrity": "sha256-de517708b4f488f820c5cc088bc6feb875b02e06597ce09372332cbdcdfcc47d"
+    },
+    {
+      "id": "android-performance",
+      "vendoredPath": "skills/android-performance",
+      "source": {
+        "type": "github",
+        "repo": "openai/skills-internal",
+        "path": ".codex/skills/android-performance",
+        "ref": "5a9bf9e14d3e8bdd93f046c01437a2e2f4369b86"
+      },
+      "integrity": "sha256-6aacbda76c14bdbc5bb878bf61a389ac9678fd8519d22c2422cfd4f767bcc606"
+    }
+  ]
+}

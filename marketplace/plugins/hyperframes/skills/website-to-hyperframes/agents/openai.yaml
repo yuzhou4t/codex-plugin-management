@@ -1,0 +1,3 @@
+interface:
+  display_name: "Website to HyperFrames"
+  short_description: "Explicitly turn a website into a quick or narrated HyperFrames video."

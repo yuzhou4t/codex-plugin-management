@@ -1,0 +1,3 @@
+interface:
+  display_name: "HyperFrames"
+  short_description: "Author HyperFrames compositions while preserving timing, timeline, media, and capture contracts."

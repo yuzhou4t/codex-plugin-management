@@ -1,0 +1,4 @@
+interface:
+  display_name: "Stripe Platform Routing"
+  short_description: "Guide advanced non-Vercel Stripe platform work"
+  default_prompt: "Review this Stripe Connect or Treasury integration against the current official documentation."

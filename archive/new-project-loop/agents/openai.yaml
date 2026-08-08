@@ -1,0 +1,6 @@
+interface:
+  display_name: "Project Delivery Loop"
+  short_description: "From scoped work to verified Git closeout"
+  default_prompt: "Use $new-project-loop to complete this project task through verification and automatic Git closeout."
+policy:
+  allow_implicit_invocation: true

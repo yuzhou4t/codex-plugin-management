@@ -1,0 +1,43 @@
+{
+  "name": "build-web-apps",
+  "version": "0.2.0",
+  "description": "Build visually driven frontends and handle specialized Stripe platform and Supabase/Postgres workflows.",
+  "author": {
+    "name": "OpenAI",
+    "email": "support@openai.com",
+    "url": "https://openai.com/"
+  },
+  "homepage": "https://openai.com/",
+  "repository": "https://github.com/openai/plugins",
+  "license": "MIT",
+  "keywords": [
+    "build-web-apps",
+    "build",
+    "product-apps",
+    "frontend",
+    "redesign",
+    "image-generation",
+    "stripe",
+    "stripe-connect",
+    "stripe-treasury",
+    "supabase",
+    "postgres"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Build Web Apps",
+    "shortDescription": "Visual frontend, Stripe platform, and Postgres workflows",
+    "longDescription": "Use Build Web Apps for explicit greenfield visual design or substantial redesigns, specialized non-Vercel Stripe platform work, and Supabase/Postgres design or tuning.",
+    "developerName": "OpenAI",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://openai.com/",
+    "privacyPolicyURL": "https://openai.com/policies/privacy-policy/",
+    "termsOfServiceURL": "https://openai.com/policies/terms-of-use/",
+    "defaultPrompt": ["Redesign this product interface with a coherent visual system."],
+    "brandColor": "#111111",
+    "composerIcon": "./assets/build-web-apps-small.svg",
+    "logo": "./assets/app-icon.png",
+    "screenshots": []
+  }
+}

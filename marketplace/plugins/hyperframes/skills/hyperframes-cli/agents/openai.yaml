@@ -1,0 +1,3 @@
+interface:
+  display_name: "HyperFrames CLI"
+  short_description: "Operate HyperFrames through the installed CLI and its live help."

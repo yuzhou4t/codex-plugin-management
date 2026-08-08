@@ -1,0 +1,6 @@
+interface:
+  display_name: "Git Finish"
+  short_description: "Automatically commit verified task-owned changes"
+  default_prompt: "Use $git-finish to inspect, verify, and safely commit the completed main task."
+policy:
+  allow_implicit_invocation: true

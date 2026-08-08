@@ -1,0 +1,19 @@
+.DS_Store
+Thumbs.db
+Desktop.ini
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.env.*
+*.local
+*.local.json
+notify.config.json
+
+# Local-only notification and machine runtime files.
+runtime/
+hooks/
+launchd/
+tests/
+scripts/deploy.sh
+MIGRATION-2026-07-10.md
