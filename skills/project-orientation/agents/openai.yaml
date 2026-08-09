@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Orientation"
+  short_description: "从当前代码与文档建立准确项目地图并确定安全验证路径"
+  default_prompt: "Use $project-orientation to inspect this project, identify its boundaries and entry points, and define the narrowest safe verification path."

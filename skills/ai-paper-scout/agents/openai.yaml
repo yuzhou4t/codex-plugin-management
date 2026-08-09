@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Paper Scout"
+  short_description: "按 CCF A 类 AI 来源筛选论文"
+  default_prompt: "Use $ai-paper-scout to find recent AI papers worth reading from CCF A-class AI venues."

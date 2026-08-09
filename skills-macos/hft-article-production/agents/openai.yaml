@@ -1,0 +1,4 @@
+interface:
+  display_name: "HFT 公众号文章生产"
+  short_description: "从资料核对、改稿、截图到 Word 与飞书完整交付"
+  default_prompt: "Use $hft-article-production to take this HFT article from verified sources through Word and Feishu delivery."

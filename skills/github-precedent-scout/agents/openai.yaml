@@ -1,0 +1,6 @@
+interface:
+  display_name: "GitHub Precedent Scout"
+  short_description: "按需搜索并核查可复用的 GitHub 开源项目、模板与库"
+  default_prompt: "Use $github-precedent-scout to find and verify GitHub precedents for this idea before choosing an implementation route."
+policy:
+  allow_implicit_invocation: false

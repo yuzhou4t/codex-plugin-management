@@ -1,0 +1,4 @@
+interface:
+  display_name: "LTCI Data Engineering"
+  short_description: "Run registry-gated LTCI public data work"
+  default_prompt: "Use $ltci-public-data-engineering to work on the 长护险 public data workspace, respecting source_registry, raw/interim/processed flow, and quality audits."

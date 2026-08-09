@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MARKETPLACE_DIR="$REPO_ROOT/marketplace"
-SKILLS_SOURCE_DIR="$REPO_ROOT/skills"
+SKILLS_SOURCE_DIRS=("$REPO_ROOT/skills" "$REPO_ROOT/skills-macos")
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
 PLUGINS=(build-web-apps test-android-apps zotero hyperframes)
 
@@ -25,13 +25,18 @@ if [[ ! -x "$CODEX_CLI" ]]; then
 fi
 
 mkdir -p "$CODEX_SKILLS_DIR"
-for skill_dir in "$SKILLS_SOURCE_DIR"/*; do
-  [[ -d "$skill_dir" && -f "$skill_dir/SKILL.md" ]] || continue
-  skill_name="$(basename "$skill_dir")"
-  target_dir="$CODEX_SKILLS_DIR/$skill_name"
-  mkdir -p "$target_dir"
-  cp -R "$skill_dir"/. "$target_dir"/
-  echo "Installed Skill: $skill_name"
+installed_skill_count=0
+for skills_source_dir in "${SKILLS_SOURCE_DIRS[@]}"; do
+  [[ -d "$skills_source_dir" ]] || continue
+  for skill_dir in "$skills_source_dir"/*; do
+    [[ -d "$skill_dir" && -f "$skill_dir/SKILL.md" ]] || continue
+    skill_name="$(basename "$skill_dir")"
+    target_dir="$CODEX_SKILLS_DIR/$skill_name"
+    mkdir -p "$target_dir"
+    cp -R "$skill_dir"/. "$target_dir"/
+    echo "Installed Skill: $skill_name"
+    (( installed_skill_count += 1 ))
+  done
 done
 
 "$CODEX_CLI" plugin marketplace add "$MARKETPLACE_DIR" --json
@@ -39,4 +44,4 @@ for plugin in "${PLUGINS[@]}"; do
   "$CODEX_CLI" plugin add "$plugin@plugin-management" --json
 done
 
-echo "Codex Skills and plugins installed from $REPO_ROOT"
+echo "Installed $installed_skill_count Skills and ${#PLUGINS[@]} plugins from $REPO_ROOT"
