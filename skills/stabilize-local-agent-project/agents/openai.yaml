@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent 项目操作护栏"
+  short_description: "阻止 Agent 无界扫描、Git 失控和磁盘留存膨胀"
+  default_prompt: "Use $stabilize-local-agent-project to audit this project safely without broad scans or unbounded disk writes."
