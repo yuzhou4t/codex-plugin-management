@@ -1,8 +1,8 @@
 # Skill 清单
 
-核对日期：2026-08-09。核对范围是这台 Mac 的 `~/.codex/skills` 中实际包含根级 `SKILL.md` 的目录；Codex 的 `.system` 目录、空目录和插件缓存不计入这 32 个用户级 Skill。
+核对日期：2026-08-09。当前仓库管理或明确排除 33 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
-## 跨平台自动安装（20）
+## 跨平台自动安装（21）
 
 | Skill | 来源 / 定位 |
 | --- | --- |
@@ -25,6 +25,7 @@
 | `paper-terminology-translation-explanation` | 自维护；论文术语翻译与解释 |
 | `project-docs-sync` | 自维护；项目文档同步与交接 |
 | `project-orientation` | 自维护；打开、理解和安全启动项目 |
+| `stabilize-local-agent-project` | 自维护；阻止无界扫描、Git/worktree 失控和磁盘留存膨胀 |
 | `storage-analyzer` | Khazix 上游快照；macOS / Windows 存储分析 |
 
 ## 仅由 macOS 自动安装（9）
@@ -53,7 +54,7 @@
 
 ## 自动安装规则
 
-- macOS：安装 `skills/` 与 `skills-macos/`，共 29 个 Skill。
-- Windows：只安装 `skills/`，共 20 个 Skill。
+- macOS：安装 `skills/` 与 `skills-macos/`，共 30 个 Skill。
+- Windows：只安装 `skills/`，共 21 个 Skill。
 - 两个平台都会安装 `marketplace/` 中固定的 4 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill 或插件。
