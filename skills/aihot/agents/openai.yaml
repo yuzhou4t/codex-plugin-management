@@ -1,0 +1,5 @@
+interface:
+  display_name: "AI HOT"
+  short_description: "查询当前 AI 热点与日报"
+  default_prompt: "Use $aihot to query live AI HOT data and return a concise Chinese brief with source links."
+

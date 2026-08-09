@@ -1,0 +1,4 @@
+interface:
+  display_name: "彻底卸载 macOS 工具"
+  short_description: "盘点并安全移除 App、CLI、配置与 PATH 残留"
+  default_prompt: "Use $uninstall-macos-tool to inventory and completely remove this macOS app or CLI, then verify the cleanup."

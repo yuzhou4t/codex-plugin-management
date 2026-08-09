@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $MarketplaceDir = Join-Path $RepoRoot "marketplace"
 $SkillsSourceDir = Join-Path $RepoRoot "skills"
+$MacSkillsSourceDir = Join-Path $RepoRoot "skills-macos"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
 $Plugins = @("build-web-apps", "test-android-apps", "zotero", "hyperframes")
 
@@ -37,6 +38,7 @@ if (-not (Test-Path -LiteralPath $CodexCli -PathType Leaf)) {
 }
 
 New-Item -ItemType Directory -Path $CodexSkillsDir -Force | Out-Null
+$InstalledSkillCount = 0
 Get-ChildItem -LiteralPath $SkillsSourceDir -Directory | ForEach-Object {
     $skillFile = Join-Path $_.FullName "SKILL.md"
     if (Test-Path -LiteralPath $skillFile -PathType Leaf) {
@@ -44,7 +46,15 @@ Get-ChildItem -LiteralPath $SkillsSourceDir -Directory | ForEach-Object {
         New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
         Copy-Item -Path (Join-Path $_.FullName "*") -Destination $targetDir -Recurse -Force
         Write-Host "Installed Skill: $($_.Name)"
+        $InstalledSkillCount++
     }
+}
+
+$MacOnlySkillCount = 0
+if (Test-Path -LiteralPath $MacSkillsSourceDir -PathType Container) {
+    $MacOnlySkillCount = @(Get-ChildItem -LiteralPath $MacSkillsSourceDir -Directory | Where-Object {
+        Test-Path -LiteralPath (Join-Path $_.FullName "SKILL.md") -PathType Leaf
+    }).Count
 }
 
 & $CodexCli plugin marketplace add $MarketplaceDir --json
@@ -59,4 +69,5 @@ foreach ($plugin in $Plugins) {
     }
 }
 
-Write-Host "Codex Skills and plugins installed from $RepoRoot"
+Write-Host "Installed $InstalledSkillCount cross-platform Skills and $($Plugins.Count) plugins from $RepoRoot"
+Write-Host "Skipped $MacOnlySkillCount macOS/project-bound Skills on Windows"

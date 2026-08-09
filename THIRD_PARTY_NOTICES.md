@@ -1,6 +1,20 @@
 # Third-party notices
 
-This repository vendors snapshots of third-party Codex plugins so that the same reviewed files can be installed on multiple computers. The Git commit pins the exact snapshot stored here.
+This repository vendors snapshots of third-party Codex Skills and plugins so that the same reviewed files can be installed on multiple computers. The Git commit pins the exact snapshot stored here.
+
+## Standalone Skills
+
+| Skill | Reviewed upstream revision | Upstream | Declared license | Notes |
+| --- | --- | --- | --- | --- |
+| `gsap-*` (8 Skills) | `aed9cfd3277740755f6bfc1155c7aa645403b760` | [greensock/gsap-skills](https://github.com/greensock/gsap-skills) | MIT | Local files were byte-for-byte equivalent to this revision when imported. |
+| `storage-analyzer` | `651a45affc65919c0e3facc6124f1656d43c4ad2` | [KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills) | MIT | Local files were byte-for-byte equivalent to this revision when imported. |
+| `aihot` | compared with `651a45affc65919c0e3facc6124f1656d43c4ad2` | [KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills) | MIT upstream | Locally adapted version; it intentionally differs from the reviewed upstream revision. |
+| `hv-analysis` | compared with `651a45affc65919c0e3facc6124f1656d43c4ad2` | [KKKKhazix/khazix-skills](https://github.com/KKKKhazix/khazix-skills) | MIT upstream | Locally adapted version; it intentionally differs from the reviewed upstream revision. |
+| `ima-skill` | local package metadata `1.1.8` | [IMA](https://ima.qq.com) | No license file included in the installed package | Kept in this private synchronization repository; re-check redistribution terms before making it public. |
+
+Copies of the MIT license texts reviewed for GSAP Skills and Khazix Skills are stored under `third_party/licenses/`.
+
+## Plugins
 
 | Plugin | Snapshot | Upstream | Declared license | Notes |
 | --- | --- | --- | --- | --- |

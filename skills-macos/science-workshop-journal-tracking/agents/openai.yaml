@@ -1,0 +1,4 @@
+interface:
+  display_name: "Science Workshop Journals"
+  short_description: "Maintain journal tracking adapters and checks"
+  default_prompt: "Use $science-workshop-journal-tracking to inspect journal source readiness, update adapter rules, run smoke tests, and refresh Science Workshop article data."
