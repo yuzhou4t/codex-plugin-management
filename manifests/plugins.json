@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "repositoryMarketplace": {
+    "name": "plugin-management",
+    "path": "marketplace"
+  },
+  "repositoryPlugins": [
+    {
+      "id": "build-web-apps@plugin-management",
+      "version": "0.2.0",
+      "required": true
+    },
+    {
+      "id": "test-android-apps@plugin-management",
+      "version": "0.1.2",
+      "required": true
+    },
+    {
+      "id": "zotero@plugin-management",
+      "version": "0.1.3",
+      "required": true
+    },
+    {
+      "id": "hyperframes@plugin-management",
+      "version": "0.2.0",
+      "required": true
+    }
+  ],
+  "platformManagedPlugins": [
+    "browser@openai-bundled",
+    "computer-use@openai-bundled",
+    "documents@openai-primary-runtime",
+    "latex@openai-bundled",
+    "pdf@openai-primary-runtime",
+    "presentations@openai-primary-runtime",
+    "sites@openai-bundled",
+    "spreadsheets@openai-primary-runtime",
+    "template-creator@openai-primary-runtime",
+    "visualize@openai-bundled"
+  ],
+  "optionalCuratedPlugins": [
+    "canva@openai-curated",
+    "figma@openai-curated",
+    "github@openai-curated",
+    "vercel@openai-curated"
+  ]
+}

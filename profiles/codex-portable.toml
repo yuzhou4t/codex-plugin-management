@@ -1,0 +1,11 @@
+# Portable, non-secret Codex preferences.
+# Merge these top-level values into each machine's config after checking support.
+# Do not replace a full ~/.codex/config.toml with this file.
+
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+# Model names and service tiers are intentionally omitted because availability
+# can differ by account, Codex version, operating system, and execution host.

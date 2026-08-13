@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "policy": "Store authoritative upstream links and reinstall from upstream; do not vendor third-party source, authentication state, or unreviewed copies.",
+  "groups": [
+    {
+      "name": "lark",
+      "sourceType": "well-known",
+      "source": "https://open.feishu.cn",
+      "skillUrlTemplate": "https://open.feishu.cn/.well-known/skills/{skill}/SKILL.md",
+      "installHint": "Use a compatible Skill installer against the well-known source, then authenticate separately on each machine.",
+      "skills": [
+        "lark-approval",
+        "lark-apps",
+        "lark-attendance",
+        "lark-base",
+        "lark-calendar",
+        "lark-contact",
+        "lark-doc",
+        "lark-drive",
+        "lark-event",
+        "lark-im",
+        "lark-mail",
+        "lark-markdown",
+        "lark-minutes",
+        "lark-note",
+        "lark-okr",
+        "lark-openapi-explorer",
+        "lark-shared",
+        "lark-sheets",
+        "lark-skill-maker",
+        "lark-slides",
+        "lark-task",
+        "lark-vc",
+        "lark-vc-agent",
+        "lark-whiteboard",
+        "lark-wiki",
+        "lark-workflow-meeting-summary",
+        "lark-workflow-standup-report"
+      ]
+    },
+    {
+      "name": "agently-mail",
+      "sourceType": "well-known",
+      "source": "https://agent.qq.com",
+      "skillUrlTemplate": "https://agent.qq.com/.well-known/skills/{skill}/SKILL.md",
+      "installHint": "npx skills add https://agent.qq.com --skill -g -y",
+      "skills": [
+        "agently-mail"
+      ]
+    }
+  ],
+  "linkedSkills": []
+}

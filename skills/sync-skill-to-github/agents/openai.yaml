@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync Skill to GitHub"
+  short_description: "安全审查并将新建或下载的 Skill 同步到 GitHub"
+  default_prompt: "Use $sync-skill-to-github to safely review and publish this Skill to the configured GitHub repository."

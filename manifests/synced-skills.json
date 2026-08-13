@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "skills": [
+    {
+      "name": "sync-skill-to-github",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-08-13",
+      "category": "skills",
+      "origin": "self"
+    }
+  ]
+}
