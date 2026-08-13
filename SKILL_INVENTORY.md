@@ -1,13 +1,14 @@
 # Skill 清单
 
-核对日期：2026-08-09。当前仓库管理或明确排除 33 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-08-13。当前仓库管理或明确排除 34 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
-## 跨平台自动安装（21）
+## 跨平台自动安装（22）
 
 | Skill | 来源 / 定位 |
 | --- | --- |
 | `ai-paper-scout` | 自维护；AI 论文检索与初筛 |
 | `aihot` | 本地衍生版；当前 AI HOT 资讯查询 |
+| `apply-personal-app-design-system` | 自维护；TTS、AI Recording 与后续个人软件的白蓝设计系统 |
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
 | `git-finish` | 自维护；Git 任务收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
@@ -54,7 +55,7 @@
 
 ## 自动安装规则
 
-- macOS：安装 `skills/` 与 `skills-macos/`，共 30 个 Skill。
-- Windows：只安装 `skills/`，共 21 个 Skill。
+- macOS：安装 `skills/` 与 `skills-macos/`，共 31 个 Skill。
+- Windows：只安装 `skills/`，共 22 个 Skill。
 - 两个平台都会安装 `marketplace/` 中固定的 4 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill 或插件。

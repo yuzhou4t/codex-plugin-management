@@ -1,0 +1,4 @@
+interface:
+  display_name: "个人应用设计系统"
+  short_description: "统一 TTS、AI Recording 与后续个人软件的白蓝设计语言"
+  default_prompt: "使用 $apply-personal-app-design-system 为这个个人软件建立统一的白蓝界面并完成视觉验收。"
