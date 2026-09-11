@@ -2,6 +2,15 @@
   "schemaVersion": 1,
   "skills": [
     {
+      "name": "grok-delegator",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-09-11",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
       "name": "sync-skill-to-github",
       "sourceUrl": null,
       "version": null,

@@ -2,11 +2,11 @@
 
 这个仓库用于在多台电脑之间同步自维护的 Codex Skill，以及经过固定版本整理的第三方 Skill / 插件快照。当前支持 macOS 和 Windows。
 
-当前管理 35 个实际 Skill：32 个纳入同步，3 个明确排除。纳入同步的 32 个中，23 个可跨平台自动安装，9 个依赖本机项目路径或 macOS 能力。完整清单见 [`SKILL_INVENTORY.md`](SKILL_INVENTORY.md)。
+当前管理 36 个实际 Skill：33 个纳入同步，3 个明确排除。纳入同步的 33 个中，24 个可跨平台自动安装，9 个依赖本机项目路径或 macOS 能力。完整清单见 [`SKILL_INVENTORY.md`](SKILL_INVENTORY.md)。
 
 ## 仓库内容
 
-- `skills/`：23 个跨平台 Skill。macOS 与 Windows 安装脚本都会安装。
+- `skills/`：24 个跨平台 Skill。macOS 与 Windows 安装脚本都会安装。
 - `skills-macos/`：9 个依赖 macOS 或这台 Mac 项目路径的 Skill。只由 macOS 安装脚本安装。
 - `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero 和 HyperFrames。
 - `profiles/`：经过脱敏的全局 Agent 工作规则和 Codex 偏好模板；不会覆盖机器上的完整配置。
@@ -42,7 +42,7 @@ cd codex-plugin-management
 powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
 ```
 
-Windows 默认安装 `skills/` 中的 23 个跨平台 Skill，不安装 `skills-macos/`。后者仍保存在仓库中，迁移对应项目并修改其中的绝对路径后可以手动安装。
+Windows 默认安装 `skills/` 中的 24 个跨平台 Skill，不安装 `skills-macos/`。后者仍保存在仓库中，迁移对应项目并修改其中的绝对路径后可以手动安装。
 
 自定义 Codex CLI 路径：
 
