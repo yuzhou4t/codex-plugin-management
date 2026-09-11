@@ -1,8 +1,8 @@
 # Skill 清单
 
-核对日期：2026-08-13。当前仓库管理或明确排除 35 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-09-11。当前仓库管理或明确排除 36 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
-## 跨平台自动安装（23）
+## 跨平台自动安装（24）
 
 | Skill | 来源 / 定位 |
 | --- | --- |
@@ -12,6 +12,7 @@
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
 | `git-finish` | 自维护；Git 任务收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
+| `grok-delegator` | 自维护；Codex 规划、Grok 调研或编码、Codex 独立验收 |
 | `gsap-core` | GSAP 官方快照 |
 | `gsap-frameworks` | GSAP 官方快照 |
 | `gsap-performance` | GSAP 官方快照 |
@@ -56,7 +57,7 @@
 
 ## 自动安装规则
 
-- macOS：安装 `skills/` 与 `skills-macos/`，共 32 个 Skill。
-- Windows：只安装 `skills/`，共 23 个 Skill。
+- macOS：安装 `skills/` 与 `skills-macos/`，共 33 个 Skill。
+- Windows：只安装 `skills/`，共 24 个 Skill。
 - 两个平台都会安装 `marketplace/` 中固定的 4 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill 或插件。

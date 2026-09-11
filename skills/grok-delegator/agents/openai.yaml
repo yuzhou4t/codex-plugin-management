@@ -1,0 +1,6 @@
+interface:
+  display_name: "Grok Delegator"
+  short_description: "按需把调研或编码任务交给 Grok，并由 Codex 验收"
+  default_prompt: "使用 $grok-delegator 把这个任务交给 Grok 完成，并在返回后独立验收。"
+policy:
+  allow_implicit_invocation: false
