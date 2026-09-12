@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Subagent Team"
+  short_description: "Configure and run a portable Astra-led model team"
+  default_prompt: "Use $codex-subagent-team to route my confirmed plan to the appropriate Codex subagents and verify the result."

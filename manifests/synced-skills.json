@@ -2,6 +2,15 @@
   "schemaVersion": 1,
   "skills": [
     {
+      "name": "codex-subagent-team",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-09-12",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
       "name": "grok-delegator",
       "sourceUrl": null,
       "version": null,

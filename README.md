@@ -2,11 +2,11 @@
 
 这个仓库用于在多台电脑之间同步自维护的 Codex Skill，以及经过固定版本整理的第三方 Skill / 插件快照。当前支持 macOS 和 Windows。
 
-当前管理 36 个实际 Skill：33 个纳入同步，3 个明确排除。纳入同步的 33 个中，24 个可跨平台自动安装，9 个依赖本机项目路径或 macOS 能力。完整清单见 [`SKILL_INVENTORY.md`](SKILL_INVENTORY.md)。
+当前管理 37 个实际 Skill：34 个纳入同步，3 个明确排除。纳入同步的 34 个中，25 个可跨平台自动安装，9 个依赖本机项目路径或 macOS 能力。完整清单见 [`SKILL_INVENTORY.md`](SKILL_INVENTORY.md)。
 
 ## 仓库内容
 
-- `skills/`：24 个跨平台 Skill。macOS 与 Windows 安装脚本都会安装。
+- `skills/`：25 个跨平台 Skill。macOS 与 Windows 安装脚本都会安装；其中 `codex-subagent-team` 还携带 4 个模型专用 Subagent 配置。
 - `skills-macos/`：9 个依赖 macOS 或这台 Mac 项目路径的 Skill。只由 macOS 安装脚本安装。
 - `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero 和 HyperFrames。
 - `profiles/`：经过脱敏的全局 Agent 工作规则和 Codex 偏好模板；不会覆盖机器上的完整配置。
@@ -42,7 +42,7 @@ cd codex-plugin-management
 powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
 ```
 
-Windows 默认安装 `skills/` 中的 24 个跨平台 Skill，不安装 `skills-macos/`。后者仍保存在仓库中，迁移对应项目并修改其中的绝对路径后可以手动安装。
+Windows 默认安装 `skills/` 中的 25 个跨平台 Skill 和 `codex-subagent-team` 携带的 4 个 Subagent，不安装 `skills-macos/`。Subagent 会写入当前用户的 `%USERPROFILE%\.codex\agents\`；设置 `CODEX_HOME` 时改用该目录。macOS 专属 Skill 仍保存在仓库中，迁移对应项目并修改其中的绝对路径后可以手动安装。
 
 自定义 Codex CLI 路径：
 
@@ -59,7 +59,13 @@ $env:PLUGIN_MANAGER_CODEX_BIN = "C:\path\to\codex.exe"
 git pull --ff-only
 ```
 
-脚本只会安装或更新本仓库管理的 Skill 和插件，不会删除其他 marketplace、插件或 Skill。它不会同步 API Key、账号配置或项目数据；这些应在每台设备上单独配置。
+脚本只会安装或更新本仓库管理的 Skill、4 个模型专用 Subagent 和插件，不会删除其他 marketplace、Agent、插件或 Skill。它不会同步 API Key、账号配置或项目数据；这些应在每台设备上单独配置。
+
+## 模型 Subagent 团队
+
+`codex-subagent-team` 提供 `sol_executor`、`terra_executor`、`terra_reviewer` 和 `luna_patcher`。安装器将四个 TOML 同步到用户级 `.codex/agents/`，因此它们能在不同项目的新对话中按名称调用，同时不会改写主模型、默认思考强度或 `config.toml`。
+
+计划确认后可以直接说：`调用 sol_executor 完整实施`；普通实现改用 `terra_executor`，独立验收使用 `terra_reviewer`，只有原因和修法已经确定的小问题才交 `luna_patcher`，修后仍需复验。写入型 Subagent 受主对话权限上限约束；实施前应确保主对话拥有 workspace-write 权限。
 
 ## 可移植配置检查
 
@@ -71,7 +77,7 @@ git pull --ff-only
 python3 scripts/doctor.py
 ```
 
-检查器只比较 Skill、插件和模板状态，不输出配置值，也不会修改本机。使用 `--strict` 可以让缺项返回非零状态；使用 `--skip-plugins` 可以避免调用 Codex CLI。
+检查器只比较 Skill、4 个受管 Subagent、插件和模板状态，不输出配置值，也不会修改本机。使用 `--strict` 可以让缺项返回非零状态；使用 `--skip-plugins` 可以避免调用 Codex CLI。
 
 ## Skill 自动同步到 GitHub
 
