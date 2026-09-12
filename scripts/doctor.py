@@ -89,6 +89,21 @@ def main() -> int:
     if missing_skills:
         warnings.append(f"Codex Skills missing: {len(missing_skills)}")
 
+    managed_agents_dir = repo / "skills" / "codex-subagent-team" / "assets" / "agents"
+    managed_agents = sorted(managed_agents_dir.glob("*.toml")) if managed_agents_dir.is_dir() else []
+    if len(managed_agents) != 4:
+        errors.append(f"managed Subagent source count is {len(managed_agents)}, expected 4")
+    installed_agents_dir = home / ".codex" / "agents"
+    matching_agents = []
+    for source in managed_agents:
+        target = installed_agents_dir / source.name
+        if not target.is_file():
+            warnings.append(f"managed Subagent missing: {source.name}")
+        elif sha256(source) != sha256(target):
+            warnings.append(f"managed Subagent differs: {source.name}")
+        else:
+            matching_agents.append(source.name)
+
     profile = repo / "profiles" / "global-AGENTS.md"
     installed_profile = home / ".codex" / "AGENTS.md"
     if not installed_profile.is_file():
@@ -141,6 +156,7 @@ def main() -> int:
 
     print(f"Repository Skills: {len(repo_skills)}")
     print(f"Installed repository Skills: {len(set(repo_skills) & installed)}")
+    print(f"Installed managed Subagents: {len(matching_agents)}/{len(managed_agents)}")
     print(f"Installed external Skills: {len(expected_external & installed_external)}")
     for message in errors:
         print(f"ERROR: {message}")

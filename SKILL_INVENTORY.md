@@ -1,14 +1,15 @@
 # Skill 清单
 
-核对日期：2026-09-11。当前仓库管理或明确排除 36 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-09-12。当前仓库管理或明确排除 37 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
-## 跨平台自动安装（24）
+## 跨平台自动安装（25）
 
 | Skill | 来源 / 定位 |
 | --- | --- |
 | `ai-paper-scout` | 自维护；AI 论文检索与初筛 |
 | `aihot` | 本地衍生版；当前 AI HOT 资讯查询 |
 | `apply-personal-app-design-system` | 自维护；TTS、AI Recording 与后续个人软件的白蓝设计系统 |
+| `codex-subagent-team` | 自维护；Astra 规划、Sol/Terra 执行、Terra 验收与 Luna 定点修补，并同步 4 个全局 Subagent |
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
 | `git-finish` | 自维护；Git 任务收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
@@ -57,7 +58,8 @@
 
 ## 自动安装规则
 
-- macOS：安装 `skills/` 与 `skills-macos/`，共 33 个 Skill。
-- Windows：只安装 `skills/`，共 24 个 Skill。
+- macOS：安装 `skills/` 与 `skills-macos/`，共 34 个 Skill。
+- Windows：只安装 `skills/`，共 25 个 Skill。
+- 两个平台都会从 `codex-subagent-team` 安装 4 个用户级 Subagent；只覆盖这 4 个受管名称，保留其他 Agent。
 - 两个平台都会安装 `marketplace/` 中固定的 4 个插件。
-- 安装脚本不会删除不属于本仓库的其他 Skill 或插件。
+- 安装脚本不会删除不属于本仓库的其他 Skill、Agent 或插件。
