@@ -59,5 +59,5 @@
 
 - macOS：安装 `skills/` 与 `skills-macos/`，共 33 个 Skill。
 - Windows：只安装 `skills/`，共 24 个 Skill。
-- 两个平台都会安装 `marketplace/` 中固定的 4 个插件。
+- 两个平台都会安装 `marketplace/` 中固定的 5 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill 或插件。

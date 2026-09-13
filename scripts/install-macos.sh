@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MARKETPLACE_DIR="$REPO_ROOT/marketplace"
 SKILLS_SOURCE_DIRS=("$REPO_ROOT/skills" "$REPO_ROOT/skills-macos")
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
-PLUGINS=(build-web-apps test-android-apps zotero hyperframes)
+PLUGINS=(build-web-apps test-android-apps zotero hyperframes token-usage-inspector)
 
 if [[ -n "${PLUGIN_MANAGER_CODEX_BIN:-}" ]]; then
   CODEX_CLI="$PLUGIN_MANAGER_CODEX_BIN"
