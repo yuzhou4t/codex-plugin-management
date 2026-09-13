@@ -8,7 +8,7 @@
 
 - `skills/`：24 个跨平台 Skill。macOS 与 Windows 安装脚本都会安装。
 - `skills-macos/`：9 个依赖 macOS 或这台 Mac 项目路径的 Skill。只由 macOS 安装脚本安装。
-- `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero 和 HyperFrames。
+- `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero、HyperFrames 和 Token Usage Inspector。
 - `profiles/`：经过脱敏的全局 Agent 工作规则和 Codex 偏好模板；不会覆盖机器上的完整配置。
 - `manifests/`：插件、外部 Skill 来源和经同步 Skill 的可审计清单。
 - `archive/`：不再主动安装的历史 Skill 和插件。安装脚本不会处理这里的内容。
@@ -76,6 +76,10 @@ python3 scripts/doctor.py
 ## Skill 自动同步到 GitHub
 
 `sync-skill-to-github` 用于在新建或修改自维护 Skill 后完成敏感信息扫描、复制、校验、定点提交和推送。飞书、Agently 等第三方 Skill 不复制到本仓库，只把官方 well-known 或 GitHub 下载链接登记到 `manifests/external-skills.json`，让新 Agent 直接从上游安装。凭据、运行状态及未确认的本机路径会阻止上传。
+
+## Token 使用量查询
+
+marketplace 中的 `token-usage-inspector` 插件读取 Codex 本机 `rollout-*.jsonl` 中原生的 `token_usage_record`，按用户轮次或单次模型调用显示 input、cached input、output、reasoning 和 total token。它支持指定任务 ID、列出最近任务、CSV/JSON 导出和实时刷新；默认不显示提示词，也不会上传会话日志。
 
 ## 安全边界
 

@@ -1,5 +1,5 @@
 {
-  "snapshotDate": "2026-08-08",
+  "snapshotDate": "2026-09-14",
   "marketplace": "plugin-management",
   "plugins": [
     {
@@ -27,6 +27,13 @@
       "version": "0.2.0",
       "upstream": "https://github.com/heygen-com/hyperframes",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "token-usage-inspector",
+      "version": "0.1.0",
+      "upstream": "https://github.com/yuzhou4t/codex-plugin-management",
+      "license": "MIT",
+      "notes": "Self-maintained local-session token usage inspector"
     }
   ]
 }

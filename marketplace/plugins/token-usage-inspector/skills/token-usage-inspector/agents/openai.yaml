@@ -1,0 +1,4 @@
+interface:
+  display_name: "Token Usage Inspector"
+  short_description: "Inspect per-turn and per-call Codex token usage"
+  default_prompt: "Use $token-usage-inspector to show token usage for a Codex task."
