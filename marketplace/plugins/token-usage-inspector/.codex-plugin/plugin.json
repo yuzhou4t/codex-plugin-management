@@ -1,7 +1,7 @@
 {
   "name": "token-usage-inspector",
-  "version": "0.1.0",
-  "description": "Inspect per-turn and per-model-call token usage from local Codex session logs.",
+  "version": "0.2.0",
+  "description": "Inspect current and historical token usage across local Codex tasks and projects.",
   "author": {
     "name": "yuzhou4t",
     "url": "https://github.com/yuzhou4t"
@@ -18,14 +18,15 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Token Usage Inspector",
-    "shortDescription": "Inspect local Codex token usage by task and turn",
-    "longDescription": "Read native token_usage_record events from local Codex rollout logs and report per-user-turn or per-model-call input, cached input, output, reasoning, and total tokens. Supports snapshots, CSV/JSON export, and live watch without uploading conversation logs.",
+    "shortDescription": "Inspect local Codex usage by task, project, model, and date",
+    "longDescription": "Read native token_usage_record events and reconstruct older cumulative token_count logs. Report per-turn, per-call, task, project, model, day, or month usage from active and archived local rollouts, with CSV/JSON export and live watch.",
     "developerName": "yuzhou4t",
     "category": "Developer Tools",
     "capabilities": ["Read"],
     "defaultPrompt": [
       "Show token usage for this Codex task.",
-      "Inspect token usage for a task ID.",
+      "Summarize all historical token usage for this project by month and model.",
+      "Inspect token usage for every locally retained Codex task.",
       "Watch the current task's token usage live."
     ]
   }

@@ -79,7 +79,7 @@ python3 scripts/doctor.py
 
 ## Token 使用量查询
 
-marketplace 中的 `token-usage-inspector` 插件读取 Codex 本机 `rollout-*.jsonl` 中原生的 `token_usage_record`，按用户轮次或单次模型调用显示 input、cached input、output、reasoning 和 total token。它支持指定任务 ID、列出最近任务、CSV/JSON 导出和实时刷新；默认不显示提示词，也不会上传会话日志。
+marketplace 中的 `token-usage-inspector` 插件读取 Codex 本机现存及归档的 `rollout-*.jsonl`：新版日志使用原生 `token_usage_record`，旧版日志从累计 `token_count` 快照计算增量并排除子任务继承回放。它既能查看单个任务的轮次和调用，也能按项目、全部历史任务、日期、模型、任务和来源汇总，支持 CSV/JSON 导出与实时刷新；默认不显示提示词，也不会上传会话日志。
 
 ## 安全边界
 
