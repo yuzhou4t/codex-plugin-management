@@ -5,7 +5,7 @@ description: Inspect native Codex token usage for a current or previous local ta
 
 # Token Usage Inspector
 
-Read the `token_usage_record` events that Codex itself writes to local `rollout-*.jsonl` session logs. The bundled script only aggregates those native counters; it does not tokenize text, contact a model, or upload conversation data.
+Read the native token counters that Codex writes to local `rollout-*.jsonl` session logs. Current logs use `event_msg` records with `task_started`, `token_count`, and `task_complete` payloads; older `token_usage_record` entries remain supported. The bundled script only aggregates those native counters; it does not tokenize text, contact a model, or upload conversation data.
 
 ## Resolve the task
 

@@ -18,6 +18,14 @@ from typing import Any, Iterable
 
 FINAL_PHASES = {"final", "final_answer"}
 WRAPPER_PREFIXES = ("<environment_context>", "<recommended_plugins>")
+USAGE_KEYS = (
+    "input_tokens",
+    "cached_input_tokens",
+    "cache_write_input_tokens",
+    "output_tokens",
+    "reasoning_output_tokens",
+    "total_tokens",
+)
 
 
 def codex_home(value: str | None) -> Path:
@@ -92,6 +100,13 @@ def usage_fields(usage: dict[str, Any]) -> dict[str, int]:
     }
 
 
+def usage_delta(total: dict[str, Any], baseline: dict[str, int]) -> dict[str, int]:
+    counters = {key: int(total.get(key, 0) or 0) for key in USAGE_KEYS}
+    if any(counters[key] < baseline.get(key, 0) for key in USAGE_KEYS):
+        baseline = {}
+    return {key: counters[key] - baseline.get(key, 0) for key in USAGE_KEYS}
+
+
 def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     prompts: dict[str, list[str]] = defaultdict(list)
     final_turns: set[str] = set()
@@ -99,9 +114,47 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
     call_rows: list[dict[str, Any]] = []
     turn_order: list[str] = []
     latest_by_turn: dict[str, dict[str, Any]] = {}
+    active_turn_id: str | None = None
+    previous_total_usage: dict[str, int] = {}
+    baseline_by_turn: dict[str, dict[str, int]] = {}
 
     for record in load_records(path):
         payload = record.get("payload", {})
+        if record.get("type") == "event_msg":
+            event_type = payload.get("type")
+            if event_type == "task_started" and payload.get("turn_id"):
+                active_turn_id = str(payload["turn_id"])
+                baseline_by_turn[active_turn_id] = dict(previous_total_usage)
+            elif event_type == "task_complete" and payload.get("turn_id"):
+                final_turns.add(str(payload["turn_id"]))
+                if active_turn_id == payload.get("turn_id"):
+                    active_turn_id = None
+            elif event_type == "token_count" and active_turn_id:
+                info = payload.get("info")
+                if not isinstance(info, dict):
+                    continue
+                last_usage = info.get("last_token_usage")
+                total_usage = info.get("total_token_usage")
+                if not isinstance(last_usage, dict) or not isinstance(total_usage, dict):
+                    continue
+                if active_turn_id not in latest_by_turn:
+                    turn_order.append(active_turn_id)
+                call_counts[active_turn_id] += 1
+                call_rows.append(
+                    {
+                        "turn": turn_order.index(active_turn_id) + 1,
+                        "call": call_counts[active_turn_id],
+                        "turn_id": active_turn_id,
+                        "timestamp_utc": record.get("timestamp", ""),
+                        **usage_fields(last_usage),
+                    }
+                )
+                latest_by_turn[active_turn_id] = {
+                    "timestamp_utc": record.get("timestamp", ""),
+                    **usage_fields(usage_delta(total_usage, baseline_by_turn.get(active_turn_id, {}))),
+                }
+                previous_total_usage = {key: int(total_usage.get(key, 0) or 0) for key in USAGE_KEYS}
+                continue
         if record.get("type") == "response_item" and payload.get("type") == "message":
             metadata = payload.get("internal_chat_message_metadata_passthrough", {})
             turn_id = metadata.get("turn_id")
