@@ -24,6 +24,11 @@
       "id": "hyperframes@plugin-management",
       "version": "0.2.0",
       "required": true
+    },
+    {
+      "id": "token-usage-inspector@plugin-management",
+      "version": "0.1.0",
+      "required": true
     }
   ],
   "platformManagedPlugins": [
