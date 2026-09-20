@@ -26,7 +26,7 @@ When the user asks to install or update this team, run the matching bundled inst
 powershell -ExecutionPolicy Bypass -File .\scripts\install-agents.ps1
 ```
 
-Both scripts use `CODEX_HOME` when set and otherwise install only these four files under the current user's `.codex/agents/` directory. They preserve every unrelated agent and do not edit `config.toml`, credentials, projects, or model-picker settings. An explicit install request authorizes replacing these four managed profile names with the bundled versions; it does not authorize changing any other agent.
+Both scripts use `CODEX_HOME` when set and otherwise install only these four files under the current user's `.codex/agents/` directory. They also atomically maintain a marked block in `config.toml` that registers the four exact `[agents.<role>]` names and points each `config_file` to its installed profile. They preserve unrelated agents and configuration, and fail instead of overwriting an unmanaged table with the same role name. An explicit install request authorizes replacing these four managed profile files and their marked registration block; it does not authorize changing any other agent, credential, project, or model-picker setting.
 
 Validate the installed filenames and compare them with the assets. If the installed Codex version does not support multi-agent operation or one of the selected model IDs, report the exact version error instead of silently substituting a model. Profiles are user-global and apply across projects. Prefer a new or reloaded conversation after installation when an already-open conversation does not recognize a newly added role.
 
