@@ -5,7 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MARKETPLACE_DIR="$REPO_ROOT/marketplace"
 SKILLS_SOURCE_DIRS=("$REPO_ROOT/skills" "$REPO_ROOT/skills-macos")
-CODEX_SKILLS_DIR="$HOME/.codex/skills"
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+CODEX_SKILLS_DIR="$CODEX_HOME_DIR/skills"
 SUBAGENT_INSTALLER="$REPO_ROOT/skills/codex-subagent-team/scripts/install-agents.sh"
 PLUGINS=(build-web-apps test-android-apps zotero hyperframes)
 

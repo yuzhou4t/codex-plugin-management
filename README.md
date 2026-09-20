@@ -42,7 +42,7 @@ cd codex-plugin-management
 powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
 ```
 
-Windows 默认安装 `skills/` 中的 25 个跨平台 Skill 和 `codex-subagent-team` 携带的 4 个 Subagent，不安装 `skills-macos/`。Subagent 会写入当前用户的 `%USERPROFILE%\.codex\agents\`；设置 `CODEX_HOME` 时改用该目录。macOS 专属 Skill 仍保存在仓库中，迁移对应项目并修改其中的绝对路径后可以手动安装。
+Windows 默认安装 `skills/` 中的 25 个跨平台 Skill 和 `codex-subagent-team` 携带的 4 个 Subagent，不安装 `skills-macos/`。Skill、Subagent 和角色注册默认写入当前用户的 `%USERPROFILE%\.codex\`；设置 `CODEX_HOME` 时三者统一改用该目录。macOS 专属 Skill 仍保存在仓库中，迁移对应项目并修改其中的绝对路径后可以手动安装。
 
 自定义 Codex CLI 路径：
 
@@ -63,7 +63,7 @@ git pull --ff-only
 
 ## 模型 Subagent 团队
 
-`codex-subagent-team` 提供 `sol_executor`、`terra_executor`、`terra_reviewer` 和 `luna_patcher`。安装器将四个 TOML 同步到用户级 `.codex/agents/`，因此它们能在不同项目的新对话中按名称调用，同时不会改写主模型、默认思考强度或 `config.toml`。
+`codex-subagent-team` 提供 `sol_executor`、`terra_executor`、`terra_reviewer` 和 `luna_patcher`。安装需要 Python 3.11 或更新版本，以便用标准 TOML 解析器验证现有配置。安装器将四个 TOML 同步到用户级 `.codex/agents/`，并只更新 `config.toml` 中带明确起止标记的受管 `[agents.<role>]` 区块；区块外的模型、思考强度和其他配置保持不变。若配置文件是符号链接、原文件不是有效 TOML，或同名角色已在受管区块外声明，安装器会拒绝修改。
 
 计划确认后可以直接说：`调用 sol_executor 完整实施`；普通实现改用 `terra_executor`，独立验收使用 `terra_reviewer`，只有原因和修法已经确定的小问题才交 `luna_patcher`，修后仍需复验。写入型 Subagent 受主对话权限上限约束；实施前应确保主对话拥有 workspace-write 权限。
 
