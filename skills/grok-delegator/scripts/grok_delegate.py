@@ -26,6 +26,24 @@ URL_PATTERN = re.compile(r"https?://[^\s<>\"'\])}]+")
 MAX_CAPTURE_BYTES = 12 * 1024 * 1024
 MAX_SNAPSHOT_FILES = 50_000
 MAX_HASH_BYTES = 16 * 1024 * 1024
+REQUIRED_GROK_FLAGS = (
+    "--prompt-file",
+    "--cwd",
+    "--output-format",
+    "--no-subagents",
+    "--no-plan",
+    "--max-turns",
+    "--sandbox",
+    "--permission-mode",
+    "--resume",
+    "--model",
+    "--reasoning-effort",
+    "--tools",
+    "--disable-web-search",
+    "--disallowed-tools",
+    "--allow",
+    "--deny",
+)
 
 
 class ContractError(ValueError):
@@ -421,6 +439,33 @@ def changed_paths(before: dict[str, str], after: dict[str, str], allowed: list[s
     return changed, violations
 
 
+def original_baseline(previous: dict[str, Any] | None) -> dict[str, str | None]:
+    if previous is None:
+        return {}
+    raw = previous.get("baseline_fingerprints")
+    if not isinstance(raw, dict):
+        raise ContractError("receipt lacks the original workspace baseline; start a new run instead of resuming")
+    if not all(isinstance(path, str) and (fingerprint is None or isinstance(fingerprint, str)) for path, fingerprint in raw.items()):
+        raise ContractError("receipt contains an invalid workspace baseline")
+    return dict(raw)
+
+
+def cumulative_changes(
+    baseline: dict[str, str | None],
+    before: dict[str, str],
+    after: dict[str, str],
+    allowed: list[str],
+    workspace_write: bool,
+) -> tuple[list[str], list[str], dict[str, str | None]]:
+    updated = dict(baseline)
+    for path in set(before) | set(after):
+        if before.get(path) != after.get(path) and path not in updated:
+            updated[path] = before.get(path)
+    changed = sorted(path for path, fingerprint in updated.items() if fingerprint != after.get(path))
+    violations = [path for path in changed if not path_allowed(path, allowed, workspace_write)]
+    return changed, violations, updated
+
+
 def stop_process(process: subprocess.Popen[bytes]) -> None:
     if process.poll() is not None:
         return
@@ -630,6 +675,7 @@ def compact_receipt(receipt: dict[str, Any]) -> dict[str, Any]:
 
 def execute(task: dict[str, Any], receipt_path: Path, grok: Path, session_id: str | None, feedback: str | None, previous: dict[str, Any] | None) -> dict[str, Any]:
     root = Path(task["cwd"])
+    baseline = original_baseline(previous)
     before = snapshot(root)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".txt", delete=False) as prompt_stream:
         prompt_stream.write(executor_prompt(task, feedback))
@@ -641,8 +687,15 @@ def execute(task: dict[str, Any], receipt_path: Path, grok: Path, session_id: st
         prompt_path.unlink(missing_ok=True)
     provider = parse_stream(stdout, stderr, code, timed_out)
     after = snapshot(root)
-    changed, violations = changed_paths(before, after, task["allowed_paths"], task["workspace_write"])
+    changed, violations, baseline = cumulative_changes(
+        baseline, before, after, task["allowed_paths"], task["workspace_write"]
+    )
     checks = run_checks(task) if not violations and provider["status"] == "executed" else []
+    if checks:
+        final = snapshot(root)
+        changed, violations, baseline = cumulative_changes(
+            baseline, before, final, task["allowed_paths"], task["workspace_write"]
+        )
     status = receipt_status(task, provider, violations, checks)
     if session_id and provider.get("session_id") and provider["session_id"] != session_id:
         status = "session_mismatch"
@@ -658,13 +711,14 @@ def execute(task: dict[str, Any], receipt_path: Path, grok: Path, session_id: st
     attempts = list(previous.get("attempts", [])) if previous else []
     attempts.append(attempt)
     receipt = {
-        "schema_version": 1,
+        "schema_version": 2,
         "task": task,
         "status": status,
         "provider": provider,
         "changed_paths": changed,
         "scope_violations": violations,
         "checks": checks,
+        "baseline_fingerprints": baseline,
         "attempts": attempts,
         "receipt_path": str(receipt_path.resolve()),
     }
@@ -676,8 +730,7 @@ def doctor(grok: Path) -> dict[str, Any]:
     version = subprocess.run([str(grok), "--version"], capture_output=True, text=True, timeout=15, check=False)
     help_result = subprocess.run([str(grok), "--help"], capture_output=True, text=True, timeout=15, check=False)
     help_text = help_result.stdout + help_result.stderr
-    required = ["--prompt-file", "--cwd", "--sandbox", "--permission-mode", "--tools", "--allow", "--deny", "--resume"]
-    missing = [flag for flag in required if flag not in help_text]
+    missing = [flag for flag in REQUIRED_GROK_FLAGS if flag not in help_text]
     return {
         "ok": version.returncode == 0 and help_result.returncode == 0 and not missing,
         "binary": str(grok),
