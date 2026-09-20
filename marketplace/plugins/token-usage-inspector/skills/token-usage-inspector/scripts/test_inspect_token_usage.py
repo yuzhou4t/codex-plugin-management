@@ -96,6 +96,26 @@ class InspectTokenUsageTests(unittest.TestCase):
         turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
         self.assertEqual(turns[0]["prompt"], "Show token totals")
 
+    def test_post_start_user_messages_attach_to_the_active_turn_without_duplicates(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-active"}},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "response_item", "payload": {
+                "type": "message", "role": "user", "content": [{"type": "input_text", "text": "Inspect after start"}],
+            }},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {"type": "user_message", "message": "Inspect after start"}},
+            {"timestamp": "2026-09-20T00:00:03.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 8, "output_tokens": 1, "total_tokens": 9},
+                "total_token_usage": {"input_tokens": 8, "output_tokens": 1, "total_tokens": 9},
+            }}},
+        ]
+        turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["prompt"], "Inspect after start")
+
+    def test_csv_serialization_uses_translation_safe_line_endings(self) -> None:
+        rendered = MODULE.serialize([{"turn": 1, "status": "complete", "total_tokens": 9}], "csv", "turn")
+        self.assertNotIn("\r\n", rendered)
+        self.assertEqual(rendered.count("\n"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

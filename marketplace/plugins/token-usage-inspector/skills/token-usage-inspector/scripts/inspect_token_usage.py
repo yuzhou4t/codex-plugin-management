@@ -86,6 +86,12 @@ def prompt_preview(messages: list[str]) -> str:
     return text[:120] + ("…" if len(text) > 120 else "")
 
 
+def append_prompt(messages: list[str], text: str) -> None:
+    normalized = text.strip()
+    if normalized and (not messages or messages[-1] != normalized):
+        messages.append(normalized)
+
+
 def usage_fields(usage: dict[str, Any]) -> dict[str, int]:
     input_tokens = int(usage.get("input_tokens", 0) or 0)
     cached = int(usage.get("cached_input_tokens", 0) or 0)
@@ -125,8 +131,8 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
             event_type = payload.get("type")
             if event_type == "user_message" and include_prompt:
                 message = payload.get("message")
-                if isinstance(message, str) and message.strip() and (not pending_prompts or pending_prompts[-1] != message.strip()):
-                    pending_prompts.append(message.strip())
+                if isinstance(message, str):
+                    append_prompt(prompts[active_turn_id] if active_turn_id else pending_prompts, message)
             if event_type == "task_started" and payload.get("turn_id"):
                 active_turn_id = str(payload["turn_id"])
                 baseline_by_turn[active_turn_id] = dict(previous_total_usage)
@@ -172,9 +178,9 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
             if payload.get("role") == "user" and include_prompt:
                 message = content_text(payload)
                 if turn_id:
-                    prompts[str(turn_id)].append(message)
-                elif message and (not pending_prompts or pending_prompts[-1] != message):
-                    pending_prompts.append(message)
+                    append_prompt(prompts[str(turn_id)], message)
+                else:
+                    append_prompt(prompts[active_turn_id] if active_turn_id else pending_prompts, message)
             elif turn_id and payload.get("role") == "assistant" and payload.get("phase") in FINAL_PHASES:
                 terminal_status[str(turn_id)] = "complete"
 
@@ -257,7 +263,7 @@ def serialize(rows: list[dict[str, Any]], output_format: str, granularity: str) 
         if not rows:
             return ""
         buffer = io.StringIO()
-        writer = csv.DictWriter(buffer, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(buffer, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
         return buffer.getvalue()
