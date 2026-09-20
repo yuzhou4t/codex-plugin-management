@@ -5,7 +5,7 @@ description: Inspect native Codex token usage for a current or previous local ta
 
 # Token Usage Inspector
 
-Read the native token counters that Codex writes to local `rollout-*.jsonl` session logs. Current logs use `event_msg` records with `task_started`, `token_count`, and `task_complete` payloads; older `token_usage_record` entries remain supported. The bundled script only aggregates those native counters; it does not tokenize text, contact a model, or upload conversation data.
+Read the native token counters that Codex writes to local `rollout-*.jsonl` session logs. Current logs use `event_msg` records with `task_started`, `token_count`, `task_complete`, and `turn_aborted` payloads; older `token_usage_record` entries remain supported. The bundled script only aggregates those native counters; it does not tokenize text, contact a model, or upload conversation data.
 
 ## Resolve the task
 
@@ -13,7 +13,7 @@ Use the bundled `scripts/inspect_token_usage.py` relative to this file.
 
 - If the user supplies a Codex task/thread ID, use `--thread-id ID`.
 - If the user supplies a rollout file, use `--session PATH`.
-- If the target is unclear, use `--list-sessions` and identify the intended local task by timestamp and ID. Add `--include-prompt` only when a prompt preview is necessary and safe to show.
+- If the target is unclear, use `--list-sessions` and identify the intended local task by timestamp and ID. Add `--include-prompt` only when a prompt preview is necessary and safe to show; ordinary user messages are associated with the following `task_started` event when they do not carry an explicit turn ID.
 - Use `--latest` only when the most recently modified local session is known to be the requested task. Concurrent tasks can make this ambiguous.
 
 The script searches `${CODEX_HOME}/sessions` when `CODEX_HOME` is set, otherwise `~/.codex/sessions`. A cloud task or ChatGPT web/shared conversation may have no corresponding local rollout log; report that boundary instead of estimating.

@@ -109,7 +109,8 @@ def usage_delta(total: dict[str, Any], baseline: dict[str, int]) -> dict[str, in
 
 def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     prompts: dict[str, list[str]] = defaultdict(list)
-    final_turns: set[str] = set()
+    terminal_status: dict[str, str] = {}
+    pending_prompts: list[str] = []
     call_counts: dict[str, int] = defaultdict(int)
     call_rows: list[dict[str, Any]] = []
     turn_order: list[str] = []
@@ -122,12 +123,22 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
         payload = record.get("payload", {})
         if record.get("type") == "event_msg":
             event_type = payload.get("type")
+            if event_type == "user_message" and include_prompt:
+                message = payload.get("message")
+                if isinstance(message, str) and message.strip() and (not pending_prompts or pending_prompts[-1] != message.strip()):
+                    pending_prompts.append(message.strip())
             if event_type == "task_started" and payload.get("turn_id"):
                 active_turn_id = str(payload["turn_id"])
                 baseline_by_turn[active_turn_id] = dict(previous_total_usage)
-            elif event_type == "task_complete" and payload.get("turn_id"):
-                final_turns.add(str(payload["turn_id"]))
-                if active_turn_id == payload.get("turn_id"):
+                if pending_prompts:
+                    prompts[active_turn_id].extend(pending_prompts)
+                    pending_prompts.clear()
+            elif event_type in {"task_complete", "turn_aborted"}:
+                terminal_turn_id = payload.get("turn_id") or active_turn_id
+                if terminal_turn_id:
+                    terminal_turn_id = str(terminal_turn_id)
+                    terminal_status[terminal_turn_id] = "complete" if event_type == "task_complete" else "aborted"
+                if active_turn_id == terminal_turn_id:
                     active_turn_id = None
             elif event_type == "token_count" and active_turn_id:
                 info = payload.get("info")
@@ -157,11 +168,15 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
                 continue
         if record.get("type") == "response_item" and payload.get("type") == "message":
             metadata = payload.get("internal_chat_message_metadata_passthrough", {})
-            turn_id = metadata.get("turn_id")
-            if turn_id and payload.get("role") == "user":
-                prompts[turn_id].append(content_text(payload))
+            turn_id = metadata.get("turn_id") if isinstance(metadata, dict) else None
+            if payload.get("role") == "user" and include_prompt:
+                message = content_text(payload)
+                if turn_id:
+                    prompts[str(turn_id)].append(message)
+                elif message and (not pending_prompts or pending_prompts[-1] != message):
+                    pending_prompts.append(message)
             elif turn_id and payload.get("role") == "assistant" and payload.get("phase") in FINAL_PHASES:
-                final_turns.add(turn_id)
+                terminal_status[str(turn_id)] = "complete"
 
         if record.get("type") != "token_usage_record":
             continue
@@ -189,7 +204,7 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
     for number, turn_id in enumerate(turn_order, start=1):
         row: dict[str, Any] = {
             "turn": number,
-            "status": "complete" if turn_id in final_turns else "in_progress",
+            "status": terminal_status.get(turn_id, "in_progress"),
             "turn_id": turn_id,
             **latest_by_turn[turn_id],
         }

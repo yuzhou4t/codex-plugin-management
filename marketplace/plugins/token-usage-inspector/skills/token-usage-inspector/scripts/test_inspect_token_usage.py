@@ -66,6 +66,36 @@ class InspectTokenUsageTests(unittest.TestCase):
         self.assertEqual(turns[0]["total_tokens"], 44)
         self.assertEqual(calls[0]["uncached_input_tokens"], 30)
 
+    def test_aborted_turn_is_terminal_and_claims_the_pending_user_prompt(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "response_item", "payload": {
+                "type": "message", "role": "user", "content": [{"type": "input_text", "text": "Inspect the current rollout"}],
+            }},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-aborted"}},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 20, "output_tokens": 3, "total_tokens": 23},
+                "total_token_usage": {"input_tokens": 20, "output_tokens": 3, "total_tokens": 23},
+            }}},
+            {"timestamp": "2026-09-20T00:00:03.000Z", "type": "event_msg", "payload": {"type": "turn_aborted", "turn_id": "turn-aborted"}},
+        ]
+        turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["status"], "aborted")
+        self.assertEqual(turns[0]["prompt"], "Inspect the current rollout")
+
+    def test_user_message_event_is_associated_with_the_following_turn(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {
+                "type": "user_message", "message": "Show token totals",
+            }},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-event"}},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 12, "output_tokens": 2, "total_tokens": 14},
+                "total_token_usage": {"input_tokens": 12, "output_tokens": 2, "total_tokens": 14},
+            }}},
+        ]
+        turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["prompt"], "Show token totals")
+
 
 if __name__ == "__main__":
     unittest.main()
