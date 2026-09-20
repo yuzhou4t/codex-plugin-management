@@ -90,7 +90,7 @@ def prompt_preview(messages: list[str]) -> str:
 
 
 def append_prompt(messages: list[str], text: str) -> None:
-    normalized = text.strip()
+    normalized = " ".join(text.split())
     if normalized and (not messages or messages[-1] != normalized):
         messages.append(normalized)
 

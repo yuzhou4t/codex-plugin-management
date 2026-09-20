@@ -126,6 +126,24 @@ class InspectTokenUsageTests(unittest.TestCase):
         self.assertEqual(turns[0]["status"], "in_progress")
         self.assertEqual(turns[0]["total_tokens"], 0)
 
+    def test_multiline_prompt_is_flattened_and_deduplicated(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-multiline"}},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "response_item", "payload": {
+                "type": "message", "role": "user", "content": [{"type": "input_text", "text": "First line\nSecond line"}],
+            }},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {
+                "type": "user_message", "message": "First line\r\nSecond line",
+            }},
+            {"timestamp": "2026-09-20T00:00:03.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 3, "output_tokens": 1, "total_tokens": 4},
+                "total_token_usage": {"input_tokens": 3, "output_tokens": 1, "total_tokens": 4},
+            }}},
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["prompt"], "First line Second line")
+        self.assertEqual(calls[0]["prompt"], "First line Second line")
+
     def test_csv_serialization_uses_translation_safe_line_endings(self) -> None:
         rendered = MODULE.serialize([{"turn": 1, "status": "complete", "total_tokens": 9}], "csv", "turn")
         self.assertNotIn("\r\n", rendered)
