@@ -110,8 +110,9 @@ class InspectTokenUsageTests(unittest.TestCase):
                 "total_token_usage": {"input_tokens": 8, "output_tokens": 1, "total_tokens": 9},
             }}},
         ]
-        turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
         self.assertEqual(turns[0]["prompt"], "Inspect after start")
+        self.assertEqual(calls[0]["prompt"], "Inspect after start")
 
     def test_started_turn_exposes_prompt_before_first_token_count(self) -> None:
         records = [

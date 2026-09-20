@@ -216,6 +216,7 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
         }
 
     turn_rows = []
+    previews = {turn_id: prompt_preview(prompts[turn_id]) for turn_id in turn_order} if include_prompt else {}
     for number, turn_id in enumerate(turn_order, start=1):
         row: dict[str, Any] = {
             "turn": number,
@@ -224,8 +225,11 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
             **latest_by_turn[turn_id],
         }
         if include_prompt:
-            row["prompt"] = prompt_preview(prompts[turn_id])
+            row["prompt"] = previews[turn_id]
         turn_rows.append(row)
+    if include_prompt:
+        for row in call_rows:
+            row["prompt"] = previews.get(str(row["turn_id"]), "")
     return turn_rows, call_rows
 
 
