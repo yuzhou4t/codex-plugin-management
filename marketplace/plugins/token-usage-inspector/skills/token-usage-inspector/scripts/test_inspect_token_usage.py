@@ -68,6 +68,16 @@ class InspectTokenUsageTests(unittest.TestCase):
         self.assertEqual(turns[0]["total_tokens"], 44)
         self.assertEqual(calls[0]["uncached_input_tokens"], 30)
 
+    def test_live_reader_ignores_only_an_unterminated_final_fragment(self) -> None:
+        path = self.write_rollout([{"type": "complete", "payload": {"value": 1}}])
+        with path.open("ab") as handle:
+            handle.write(b'{"type":"partial"')
+        self.assertEqual(list(MODULE.load_records(path)), [{"type": "complete", "payload": {"value": 1}}])
+
+        path.write_bytes(b'{"type":"broken"}\nnot-json\n')
+        with self.assertRaises(json.JSONDecodeError):
+            list(MODULE.load_records(path))
+
     def test_aborted_turn_is_terminal_and_claims_the_pending_user_prompt(self) -> None:
         records = [
             {"timestamp": "2026-09-20T00:00:00.000Z", "type": "response_item", "payload": {
@@ -171,6 +181,15 @@ class InspectTokenUsageTests(unittest.TestCase):
             output = Path(temporary) / "usage.json"
             with patch.object(MODULE.sys, "argv", [*common, "--output", str(output)]), patch.object(MODULE, "write_snapshot", side_effect=KeyboardInterrupt):
                 self.assertEqual(MODULE.main(), 0)
+
+    def test_output_cannot_replace_the_selected_rollout(self) -> None:
+        rollout = self.write_rollout([])
+        original = rollout.read_bytes()
+        with patch.object(MODULE.sys, "argv", [
+            "inspect_token_usage.py", "--session", str(rollout), "--output", str(rollout),
+        ]):
+            self.assertEqual(MODULE.main(), 2)
+        self.assertEqual(rollout.read_bytes(), original)
 
     def test_list_sessions_honors_csv_output_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

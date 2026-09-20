@@ -64,15 +64,18 @@ def resolve_session(args: argparse.Namespace) -> Path:
 
 
 def load_records(path: Path) -> Iterable[dict[str, Any]]:
-    with path.open(encoding="utf-8") as handle:
-        for line_number, line in enumerate(handle, start=1):
-            try:
-                yield json.loads(line)
-            except json.JSONDecodeError:
-                # A live writer may leave only the final line temporarily incomplete.
-                if line_number == sum(1 for _ in path.open(encoding="utf-8")):
-                    return
-                raise
+    snapshot = path.read_bytes()
+    lines = snapshot.splitlines()
+    for index, raw_line in enumerate(lines):
+        try:
+            yield json.loads(raw_line.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            # The one immutable read can end inside the live writer's final
+            # UTF-8 codepoint or JSON object. A malformed terminated/interior
+            # line is persistent corruption and must still surface.
+            if index == len(lines) - 1 and not snapshot.endswith((b"\n", b"\r")):
+                return
+            raise
 
 
 def content_text(payload: dict[str, Any]) -> str:
@@ -284,8 +287,13 @@ def serialize(rows: list[dict[str, Any]], output_format: str, granularity: str) 
 
 
 def list_local_sessions(args: argparse.Namespace) -> None:
+    files = session_files(codex_home(args.codex_home))
+    if args.output:
+        output = Path(args.output).expanduser()
+        if any(paths_alias(output, source) for source in files):
+            raise ValueError("--output must not alias a native Codex rollout log")
     rows = []
-    for path in session_files(codex_home(args.codex_home))[: args.limit]:
+    for path in files[: args.limit]:
         thread_id = path.stem.split("-")[-5:]
         row = {
             "modified_local": datetime.fromtimestamp(path.stat().st_mtime).astimezone().isoformat(timespec="seconds"),
@@ -346,6 +354,15 @@ def atomic_write_text(target: Path, content: str) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def paths_alias(left: Path, right: Path) -> bool:
+    if left.resolve() == right.resolve():
+        return True
+    try:
+        return left.exists() and right.exists() and os.path.samefile(left, right)
+    except OSError:
+        return False
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     target = parser.add_mutually_exclusive_group()
@@ -370,6 +387,8 @@ def main() -> int:
             list_local_sessions(args)
             return 0
         path = resolve_session(args)
+        if args.output and paths_alias(Path(args.output).expanduser(), path):
+            raise ValueError("--output must not alias the selected Codex rollout log")
         if args.watch is not None and args.watch <= 0:
             raise ValueError("--watch must be greater than zero")
         if args.watch is not None and args.format in {"csv", "json"} and not args.output:
