@@ -113,6 +113,18 @@ class InspectTokenUsageTests(unittest.TestCase):
         turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
         self.assertEqual(turns[0]["prompt"], "Inspect after start")
 
+    def test_started_turn_exposes_prompt_before_first_token_count(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-new"}},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "event_msg", "payload": {"type": "user_message", "message": "Prompt before usage"}},
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(calls, [])
+        self.assertEqual(len(turns), 1)
+        self.assertEqual(turns[0]["prompt"], "Prompt before usage")
+        self.assertEqual(turns[0]["status"], "in_progress")
+        self.assertEqual(turns[0]["total_tokens"], 0)
+
     def test_csv_serialization_uses_translation_safe_line_endings(self) -> None:
         rendered = MODULE.serialize([{"turn": 1, "status": "complete", "total_tokens": 9}], "csv", "turn")
         self.assertNotIn("\r\n", rendered)
@@ -156,6 +168,7 @@ class InspectTokenUsageTests(unittest.TestCase):
             rendered = output.read_text(encoding="utf-8")
             self.assertTrue(rendered.startswith("modified_local,task_id,path\n"))
             self.assertIn("rollout-2026-09-20-task-id.jsonl", rendered)
+            self.assertEqual(list(root.glob(".sessions.csv.*.tmp")), [])
 
 
 if __name__ == "__main__":

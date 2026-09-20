@@ -9,6 +9,7 @@ import io
 import json
 import os
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -138,6 +139,12 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
             if event_type == "task_started" and payload.get("turn_id"):
                 active_turn_id = str(payload["turn_id"])
                 baseline_by_turn[active_turn_id] = dict(previous_total_usage)
+                if active_turn_id not in latest_by_turn:
+                    turn_order.append(active_turn_id)
+                    latest_by_turn[active_turn_id] = {
+                        "timestamp_utc": record.get("timestamp", ""),
+                        **usage_fields({}),
+                    }
                 if pending_prompts:
                     prompts[active_turn_id].extend(pending_prompts)
                     pending_prompts.clear()
@@ -292,7 +299,7 @@ def list_local_sessions(args: argparse.Namespace) -> None:
     else:
         rendered = table_for_sessions(rows)
     if args.output:
-        Path(args.output).expanduser().write_text(rendered, encoding="utf-8")
+        atomic_write_text(Path(args.output).expanduser(), rendered)
     else:
         print(rendered)
 
@@ -315,11 +322,24 @@ def write_snapshot(args: argparse.Namespace, path: Path) -> None:
     heading = f"Session: {path}\nUpdated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}\n"
     content = rendered if args.format in {"csv", "json"} else f"{heading}\n{rendered}"
     if args.output:
-        Path(args.output).expanduser().write_text(content, encoding="utf-8")
+        atomic_write_text(Path(args.output).expanduser(), content)
     else:
         if args.watch and sys.stdout.isatty():
             print("\033[2J\033[H", end="")
         print(content)
+
+
+def atomic_write_text(target: Path, content: str) -> None:
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=target.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
