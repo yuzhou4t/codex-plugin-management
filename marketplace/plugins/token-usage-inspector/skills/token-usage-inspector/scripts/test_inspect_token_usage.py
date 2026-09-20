@@ -141,6 +141,22 @@ class InspectTokenUsageTests(unittest.TestCase):
             with patch.object(MODULE.sys, "argv", [*common, "--output", str(output)]), patch.object(MODULE, "write_snapshot", side_effect=KeyboardInterrupt):
                 self.assertEqual(MODULE.main(), 0)
 
+    def test_list_sessions_honors_csv_output_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sessions = root / "sessions"
+            sessions.mkdir()
+            (sessions / "rollout-2026-09-20-task-id.jsonl").write_text("{}\n", encoding="utf-8")
+            output = root / "sessions.csv"
+            args = argparse.Namespace(
+                codex_home=str(root), limit=20, include_prompt=False,
+                format="csv", output=str(output),
+            )
+            MODULE.list_local_sessions(args)
+            rendered = output.read_text(encoding="utf-8")
+            self.assertTrue(rendered.startswith("modified_local,task_id,path\n"))
+            self.assertIn("rollout-2026-09-20-task-id.jsonl", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

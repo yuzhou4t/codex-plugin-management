@@ -285,7 +285,16 @@ def list_local_sessions(args: argparse.Namespace) -> None:
             turns, _ = parse_usage(path, include_prompt=True)
             row["prompt"] = turns[-1].get("prompt", "") if turns else ""
         rows.append(row)
-    print(json.dumps(rows, ensure_ascii=False, indent=2) if args.format == "json" else table_for_sessions(rows))
+    if args.format == "json":
+        rendered = json.dumps(rows, ensure_ascii=False, indent=2)
+    elif args.format == "csv":
+        rendered = serialize(rows, "csv", "turn")
+    else:
+        rendered = table_for_sessions(rows)
+    if args.output:
+        Path(args.output).expanduser().write_text(rendered, encoding="utf-8")
+    else:
+        print(rendered)
 
 
 def table_for_sessions(rows: list[dict[str, Any]]) -> str:
