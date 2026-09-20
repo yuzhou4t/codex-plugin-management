@@ -4,7 +4,9 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $MarketplaceDir = Join-Path $RepoRoot "marketplace"
 $SkillsSourceDir = Join-Path $RepoRoot "skills"
 $MacSkillsSourceDir = Join-Path $RepoRoot "skills-macos"
-$CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
+$CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE ".codex" }
+$CodexSkillsDir = Join-Path $CodexHome "skills"
+$SubagentInstaller = Join-Path $SkillsSourceDir "codex-subagent-team\scripts\install-agents.ps1"
 $Plugins = @("build-web-apps", "test-android-apps", "zotero", "hyperframes")
 
 function Find-CodexCli {
@@ -57,6 +59,11 @@ if (Test-Path -LiteralPath $MacSkillsSourceDir -PathType Container) {
     }).Count
 }
 
+if (-not (Test-Path -LiteralPath $SubagentInstaller -PathType Leaf)) {
+    throw "Subagent installer is missing: $SubagentInstaller"
+}
+& $SubagentInstaller -CodexHome $CodexHome
+
 & $CodexCli plugin marketplace add $MarketplaceDir --json
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to add the plugin-management marketplace."
@@ -69,5 +76,5 @@ foreach ($plugin in $Plugins) {
     }
 }
 
-Write-Host "Installed $InstalledSkillCount cross-platform Skills and $($Plugins.Count) plugins from $RepoRoot"
+Write-Host "Installed $InstalledSkillCount cross-platform Skills, 4 managed Subagents, and $($Plugins.Count) plugins from $RepoRoot"
 Write-Host "Skipped $MacOnlySkillCount macOS/project-bound Skills on Windows"
