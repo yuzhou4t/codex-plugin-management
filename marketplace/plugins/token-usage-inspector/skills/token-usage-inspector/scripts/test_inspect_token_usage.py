@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import argparse
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -115,6 +117,29 @@ class InspectTokenUsageTests(unittest.TestCase):
         rendered = MODULE.serialize([{"turn": 1, "status": "complete", "total_tokens": 9}], "csv", "turn")
         self.assertNotIn("\r\n", rendered)
         self.assertEqual(rendered.count("\n"), 2)
+
+    def test_latest_session_requires_explicit_opt_in(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sessions = root / "sessions"
+            sessions.mkdir()
+            rollout = sessions / "rollout-latest.jsonl"
+            rollout.write_text("{}\n", encoding="utf-8")
+            args = argparse.Namespace(session=None, thread_id=None, latest=False, codex_home=str(root))
+            with self.assertRaisesRegex(ValueError, "explicit --latest"):
+                MODULE.resolve_session(args)
+            args.latest = True
+            self.assertEqual(MODULE.resolve_session(args), rollout)
+
+    def test_watch_rejects_structured_stdout_but_allows_atomic_output(self) -> None:
+        common = ["inspect_token_usage.py", "--session", str(self.write_rollout([])), "--watch", "1", "--format", "json"]
+        with patch.object(MODULE.sys, "argv", common):
+            self.assertEqual(MODULE.main(), 2)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "usage.json"
+            with patch.object(MODULE.sys, "argv", [*common, "--output", str(output)]), patch.object(MODULE, "write_snapshot", side_effect=KeyboardInterrupt):
+                self.assertEqual(MODULE.main(), 0)
 
 
 if __name__ == "__main__":

@@ -55,6 +55,8 @@ def resolve_session(args: argparse.Namespace) -> Path:
         if not matches:
             raise FileNotFoundError(f"No local rollout log found for task ID: {args.thread_id}")
         return matches[0]
+    if not args.latest:
+        raise ValueError("Choose --session, --thread-id, or explicit --latest; use --list-sessions to identify a task")
     if not files:
         raise FileNotFoundError("No local Codex rollout logs found")
     return files[0]
@@ -337,6 +339,8 @@ def main() -> int:
         path = resolve_session(args)
         if args.watch is not None and args.watch <= 0:
             raise ValueError("--watch must be greater than zero")
+        if args.watch is not None and args.format in {"csv", "json"} and not args.output:
+            raise ValueError("--watch with CSV or JSON requires --output so each refresh remains one valid document")
         while True:
             write_snapshot(args, path)
             if args.watch is None:
