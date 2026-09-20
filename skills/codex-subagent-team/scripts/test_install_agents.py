@@ -102,6 +102,32 @@ class InstallAgentsTests(unittest.TestCase):
             self.assertEqual(target.read_text(encoding="utf-8"), 'model = "gpt-6-astra"\n')
             self.assertFalse((codex_home / "agents").exists())
 
+    def test_marker_text_inside_multiline_value_is_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            user_home = root / "home"
+            codex_home = root / "custom-codex"
+            user_home.mkdir()
+            codex_home.mkdir()
+            config = codex_home / "config.toml"
+            instructions = (
+                'developer_instructions = """Keep this text.\n'
+                '# BEGIN codex-subagent-team managed roles\n'
+                'This is user content, not a managed TOML comment block.\n'
+                '# END codex-subagent-team managed roles\n'
+                'Keep this too."""\n'
+            )
+            config.write_text(instructions, encoding="utf-8")
+
+            first = self.run_installer(codex_home, user_home)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            second = self.run_installer(codex_home, user_home)
+            self.assertEqual(second.returncode, 0, second.stderr)
+            installed = config.read_text(encoding="utf-8")
+            self.assertIn(instructions.rstrip(), installed)
+            self.assertEqual(installed.count("# BEGIN codex-subagent-team managed roles"), 2)
+            self.assertEqual(tomllib.loads(installed)["developer_instructions"], tomllib.loads(instructions)["developer_instructions"])
+
     def test_outer_macos_installer_uses_custom_codex_home_for_skills_and_agents(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

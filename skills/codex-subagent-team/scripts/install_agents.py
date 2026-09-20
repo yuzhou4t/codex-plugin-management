@@ -18,8 +18,8 @@ END_MARKER = "# END codex-subagent-team managed roles"
 
 def strip_managed_block(text: str, config_path: Path) -> str:
     lines = text.splitlines(keepends=True)
-    begins = [index for index, line in enumerate(lines) if line.rstrip("\r\n") == BEGIN_MARKER]
-    ends = [index for index, line in enumerate(lines) if line.rstrip("\r\n") == END_MARKER]
+    begins = toml_comment_lines(lines, BEGIN_MARKER)
+    ends = toml_comment_lines(lines, END_MARKER)
     if len(begins) != len(ends) or len(begins) > 1:
         raise ValueError(f"Managed Subagent config markers are incomplete or duplicated: {config_path}")
     if not begins:
@@ -27,6 +27,60 @@ def strip_managed_block(text: str, config_path: Path) -> str:
     if ends[0] < begins[0]:
         raise ValueError(f"Managed Subagent config markers are out of order: {config_path}")
     return "".join(lines[: begins[0]] + lines[ends[0] + 1 :])
+
+
+def toml_comment_lines(lines: list[str], marker: str) -> list[int]:
+    """Return exact full-line marker comments, excluding quoted TOML content."""
+    matches: list[int] = []
+    state: str | None = None
+    for index, line in enumerate(lines):
+        content = line.rstrip("\r\n")
+        if state is None and content == marker:
+            matches.append(index)
+        cursor = 0
+        while cursor < len(content):
+            if state is None:
+                if content[cursor] == "#":
+                    break
+                if content.startswith('"""', cursor):
+                    state = "multi-basic"
+                    cursor += 3
+                    continue
+                if content.startswith("'''", cursor):
+                    state = "multi-literal"
+                    cursor += 3
+                    continue
+                if content[cursor] == '"':
+                    state = "basic"
+                elif content[cursor] == "'":
+                    state = "literal"
+            elif state == "basic":
+                if content[cursor] == '"' and not escaped(content, cursor):
+                    state = None
+            elif state == "literal":
+                if content[cursor] == "'":
+                    state = None
+            elif state == "multi-basic" and content.startswith('"""', cursor) and not escaped(content, cursor):
+                state = None
+                cursor += 3
+                continue
+            elif state == "multi-literal" and content.startswith("'''", cursor):
+                state = None
+                cursor += 3
+                continue
+            cursor += 1
+        if state in {"basic", "literal"}:
+            state = None
+    return matches
+
+
+def escaped(text: str, index: int) -> bool:
+    backslashes = 0
+    cursor = index - 1
+    while cursor >= 0 and text[cursor] == "\\":
+        backslashes += 1
+        cursor -= 1
+    return backslashes % 2 == 1
 
 
 def parse_config(text: str, config_path: Path) -> dict:
