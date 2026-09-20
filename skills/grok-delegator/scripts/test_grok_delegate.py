@@ -26,6 +26,30 @@ class GrokDelegateTests(unittest.TestCase):
         self.fake = self.root / ("grok.exe" if os.name == "nt" else "grok")
         self.arguments_log = self.root / "arguments.json"
         self.mode_file = self.root / "fake-mode.txt"
+        self.help_file = self.root / "fake-help.txt"
+        self.help_file.write_text(
+            " ".join(
+                [
+                    "--prompt-file",
+                    "--cwd",
+                    "--output-format",
+                    "--no-subagents",
+                    "--no-plan",
+                    "--max-turns",
+                    "--sandbox",
+                    "--permission-mode",
+                    "--resume",
+                    "--model",
+                    "--reasoning-effort",
+                    "--tools",
+                    "--disable-web-search",
+                    "--disallowed-tools",
+                    "--allow",
+                    "--deny",
+                ]
+            ),
+            encoding="utf-8",
+        )
         self.fake.write_text(
             textwrap.dedent(
                 f"""\
@@ -36,7 +60,7 @@ class GrokDelegateTests(unittest.TestCase):
                     print('grok 9.9.9-test')
                     raise SystemExit(0)
                 if '--help' in args:
-                    print('--prompt-file --cwd --sandbox --permission-mode --tools --allow --deny --resume')
+                    print(pathlib.Path({str(self.help_file)!r}).read_text(encoding='utf-8'))
                     raise SystemExit(0)
                 pathlib.Path({str(self.arguments_log)!r}).write_text(json.dumps(args), encoding='utf-8')
                 cwd = pathlib.Path(args[args.index('--cwd') + 1])
@@ -47,6 +71,9 @@ class GrokDelegateTests(unittest.TestCase):
                 elif mode == 'violation':
                     (cwd / 'outside.txt').write_text('bad\\n', encoding='utf-8')
                 elif mode == 'resume':
+                    (cwd / 'out.txt').write_text('fixed\\n', encoding='utf-8')
+                elif mode == 'repair-scope':
+                    (cwd / 'outside.txt').unlink(missing_ok=True)
                     (cwd / 'out.txt').write_text('fixed\\n', encoding='utf-8')
                 elif mode == 'workspace':
                     (cwd / 'src').mkdir(exist_ok=True)
@@ -170,6 +197,46 @@ class GrokDelegateTests(unittest.TestCase):
         saved = json.loads(receipt.read_text(encoding="utf-8"))
         self.assertEqual(len(saved["attempts"]), 2)
         self.assertEqual(self.workspace.joinpath("out.txt").read_text(), "fixed\n")
+
+    def test_resume_keeps_original_scope_baseline_until_violation_is_repaired(self) -> None:
+        receipt = self.root / "scope-receipt.json"
+        first = self.run_cli("run", "--task", str(self.task()), "--receipt", str(receipt), mode="violation")
+        self.assertEqual(first.returncode, 2, first.stdout)
+
+        feedback = self.root / "feedback.txt"
+        feedback.write_text("Remove the out-of-scope file and complete the task.", encoding="utf-8")
+        unchanged = self.run_cli("resume", "--receipt", str(receipt), "--feedback", str(feedback), mode="resume")
+        self.assertEqual(unchanged.returncode, 2, unchanged.stdout)
+        self.assertEqual(json.loads(unchanged.stdout)["scope_violations"], ["outside.txt"])
+
+        repaired = self.run_cli("resume", "--receipt", str(receipt), "--feedback", str(feedback), mode="repair-scope")
+        self.assertEqual(repaired.returncode, 0, repaired.stdout)
+        output = json.loads(repaired.stdout)
+        self.assertEqual(output["status"], "needs_code_review")
+        self.assertEqual(output["changed_paths"], ["out.txt"])
+        self.assertEqual(output["scope_violations"], [])
+
+    def test_host_check_workspace_changes_are_included_in_scope_validation(self) -> None:
+        receipt = self.root / "check-scope-receipt.json"
+        check = [sys.executable, "-c", "from pathlib import Path; Path('outside.txt').write_text('check output\\n')"]
+        result = self.run_cli("run", "--task", str(self.task(checks=[check])), "--receipt", str(receipt))
+        self.assertEqual(result.returncode, 2, result.stdout)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["status"], "scope_violation")
+        self.assertEqual(output["changed_paths"], ["out.txt", "outside.txt"])
+        self.assertEqual(output["scope_violations"], ["outside.txt"])
+
+    def test_doctor_requires_every_flag_the_adapter_can_invoke(self) -> None:
+        omitted = {"--output-format", "--no-subagents", "--no-plan", "--max-turns", "--disallowed-tools"}
+        help_text = self.help_file.read_text(encoding="utf-8")
+        self.help_file.write_text(" ".join(flag for flag in help_text.split() if flag not in omitted), encoding="utf-8")
+
+        result = self.run_cli("doctor")
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        output = json.loads(result.stdout)
+        self.assertFalse(output["ok"])
+        self.assertEqual(set(output["missing_required_flags"]), omitted)
 
     def test_protected_and_escaping_paths_are_rejected(self) -> None:
         for name in ("../outside.txt", ".git/config", ".env"):
