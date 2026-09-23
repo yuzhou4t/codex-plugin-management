@@ -10,7 +10,7 @@
 - `skills-macos/`：9 个依赖 macOS 或这台 Mac 项目路径的 Skill。只由 macOS 安装脚本安装。
 - `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero、HyperFrames 和 Token Usage Inspector。
 - `profiles/`：经过脱敏的全局 Agent 工作规则和 Codex 偏好模板；不会覆盖机器上的完整配置。
-- `antigravity/skills/`：面向 AntiGravity 的前端工作 Skill；源文件留在仓库，本机副本安装到 `~/.gemini/config/skills/`，不加入 Codex 的 Skill 安装清单。
+- `skills/personal-frontend-builder/`：前端构建与提示词整理 Skill，Codex 和 AntiGravity 共用同一份源文件。
 - `manifests/`：插件、外部 Skill 来源和经同步 Skill 的可审计清单。
 - `archive/`：不再主动安装的历史 Skill 和插件。安装脚本不会处理这里的内容。
 - `THIRD_PARTY_NOTICES.md`：第三方 Skill / 插件的来源、版本和许可证说明。
@@ -51,6 +51,20 @@ Windows 默认安装 `skills/` 中的 24 个跨平台 Skill，不安装 `skills-
 $env:PLUGIN_MANAGER_CODEX_BIN = "C:\path\to\codex.exe"
 .\scripts\install-windows.ps1
 ```
+
+## AntiGravity 前端 Skill 互通
+
+本机 AntiGravity 通过 `~/.gemini/config/skills/` 中的链接直接读取仓库源文件：自维护的 `personal-frontend-builder`，以及 Build Web Apps 插件的 `frontend-app-builder`。前者也供 Codex 使用；后者在 Codex 中由插件提供。修改仓库源文件后，AntiGravity 无需再维护另一份副本。GSAP 动效专题则链接到这台 Mac 已安装的 Codex `gsap` Skill，仅在项目使用 GSAP 时启用。
+
+在另一台 Mac 克隆仓库并安装 Codex Skill 后，于仓库根目录执行以下命令建立 AntiGravity 链接（目标位置已有文件时命令会停止，不会覆盖）：
+
+```bash
+mkdir -p "$HOME/.gemini/config/skills"
+ln -s "$PWD/skills/personal-frontend-builder" "$HOME/.gemini/config/skills/personal-frontend-builder"
+ln -s "$PWD/marketplace/plugins/build-web-apps/skills/frontend-app-builder" "$HOME/.gemini/config/skills/frontend-app-builder"
+```
+
+这台 Mac 还把已安装的 Codex `gsap` Skill 链接给 AntiGravity；它依赖本机路径，不在上面的跨设备命令中。不要复制 Figma、Canva、Vercel 等依赖其插件工具的 Skill 当作通用指令。Mac 安装脚本会把新安装的 `personal-frontend-builder` 链接到仓库，重跑时保留链接；Windows 安装脚本仍复制 Skill 文件。
 
 ## 更新
 
