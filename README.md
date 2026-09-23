@@ -10,6 +10,7 @@
 - `skills-macos/`：9 个依赖 macOS 或这台 Mac 项目路径的 Skill。只由 macOS 安装脚本安装。
 - `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero、HyperFrames 和 Token Usage Inspector。
 - `profiles/`：经过脱敏的全局 Agent 工作规则和 Codex 偏好模板；不会覆盖机器上的完整配置。
+- `antigravity/skills/`：面向 AntiGravity 的前端工作 Skill；源文件留在仓库，本机副本安装到 `~/.gemini/config/skills/`，不加入 Codex 的 Skill 安装清单。
 - `manifests/`：插件、外部 Skill 来源和经同步 Skill 的可审计清单。
 - `archive/`：不再主动安装的历史 Skill 和插件。安装脚本不会处理这里的内容。
 - `THIRD_PARTY_NOTICES.md`：第三方 Skill / 插件的来源、版本和许可证说明。
