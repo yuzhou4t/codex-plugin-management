@@ -29,8 +29,8 @@ Use semantic names. Adjust exact values only when contrast or platform rendering
 | `text-secondary` | `#59697D` | `#91A1C2` | Supporting copy |
 | `border` | `rgba(179,209,245,.48)` | `rgba(102,166,255,.32)` | Panel border |
 | `border-subtle` | `rgba(194,214,240,.44)` | `rgba(122,166,214,.30)` | Dividers and controls |
-| `accent` | `#407DF5` | `#66A6FF` | Primary action and selection |
-| `accent-strong` | `#2161DB` | `#4F91FA` | Pressed state and gradient end |
+| `accent` | `#2161DB` | `#66A6FF` | Primary action and selection |
+| `accent-strong` | `#174BB0` | `#4F91FA` | Pressed state and gradient end |
 | `selection` | `#1487FF` | `#33ADFF` | Screenshot and direct manipulation |
 | `success` | `#22B85A` | `#4BD17A` | Confirmed success |
 | `warning` | `#E89113` | `#FFB84D` | Attention and pending state |
@@ -41,6 +41,7 @@ Use semantic names. Adjust exact values only when contrast or platform rendering
 Rules:
 
 - Use no more than one saturated functional accent in a local control group.
+- Use `accent` for small active-navigation labels and links; the light `#2161DB` meets 4.5:1 on the listed light backgrounds, near-white surfaces, and `surface-control`. Use white text on light-mode accent buttons. Recheck contrast on the actual composited fill, especially selected/tinted states; do not lighten the text accent back to the decorative glow color.
 - Keep ambient glows below 24% opacity and away from body text.
 - Use opaque or nearly opaque control fills over complex backgrounds.
 - Never render primary text directly over a glow without a stable surface.
