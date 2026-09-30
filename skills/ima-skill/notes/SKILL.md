@@ -1,5 +1,17 @@
 # Notes (笔记)
 
+## 初始化命令（每个新 Bash 会话先执行）
+
+以下 Bash 示例从 Codex 的安装目录调用脚本，与当前工作目录无关。若从仓库测试而非已安装 Skill 使用，将 `IMA_SKILL_DIR` 设为已确认的 `skills/ima-skill` 绝对路径。凭据由 `ima_api.cjs` 从既有环境变量或配置文件读取，不需要拼入命令行 JSON。
+
+```bash
+IMA_SKILL_DIR="${CODEX_HOME:-$HOME/.codex}/skills/ima-skill"
+test -f "$IMA_SKILL_DIR/ima_api.cjs" || { printf '%s\n' "IMA skill not installed at $IMA_SKILL_DIR" >&2; exit 1; }
+ima_api() { node "$IMA_SKILL_DIR/ima_api.cjs" "$@"; }
+```
+
+PowerShell 下安装根目录同样取 `$env:CODEX_HOME`（未设置时为 `Join-Path $HOME ".codex"`），脚本位于其 `skills/ima-skill` 子目录；不要逐字执行 Bash 语法，按根文档的 PowerShell UTF-8 请求模板处理 JSON。
+
 > ⛔ Before ANY write (`import_doc`/`append_doc`): validate ALL string fields (`content`, `title`) are legal UTF-8.
 > Non-UTF-8 content causes irreversible garbled text in IMA. See root SKILL.md § MANDATORY RULES for platform-specific validation methods.
 

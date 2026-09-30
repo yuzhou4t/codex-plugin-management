@@ -109,6 +109,18 @@ Agent 会按优先级依次尝试：环境变量 → 配置文件。缺少凭证
 > **Security note:** Credentials are only sent as HTTP headers to `ima.qq.com` and never to any other domain, file, or log.
 > **Runtime dependencies:** Check `meta.json` → `required_binaries`
 
+## 初始化命令（每个新 Bash 会话先执行）
+
+以下 Bash 示例从 Codex 的安装目录调用脚本，与当前工作目录无关。若从仓库测试而非已安装 Skill 使用，将 `IMA_SKILL_DIR` 设为已确认的 `skills/ima-skill` 绝对路径。凭据由 `ima_api.cjs` 从既有环境变量或配置文件读取，不需要拼入命令行 JSON。
+
+```bash
+IMA_SKILL_DIR="${CODEX_HOME:-$HOME/.codex}/skills/ima-skill"
+test -f "$IMA_SKILL_DIR/ima_api.cjs" || { printf '%s\n' "IMA skill not installed at $IMA_SKILL_DIR" >&2; exit 1; }
+ima_api() { node "$IMA_SKILL_DIR/ima_api.cjs" "$@"; }
+```
+
+PowerShell 下安装根目录同样取 `$env:CODEX_HOME`（未设置时为 `Join-Path $HOME ".codex"`），脚本位于其 `skills/ima-skill` 子目录；不要逐字执行 Bash 语法，按根文档的 PowerShell UTF-8 请求模板处理 JSON。
+
 ## API 调用模板
 
 所有请求统一为 **HTTP POST + JSON Body**，仅发往官方 Base URL `https://ima.qq.com`。
@@ -116,12 +128,9 @@ Agent 会按优先级依次尝试：环境变量 → 配置文件。缺少凭证
 `ima_api` 已抽离到脚本：`./ima_api.cjs`
 
 ```bash
-# Example usage (cross-platform, pass credentials via options JSON)
-SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-OPTS=$(printf '{"clientId":"%s","apiKey":"%s"}' "$IMA_OPENAPI_CLIENTID" "$IMA_OPENAPI_APIKEY")
-
+# 先执行上面的初始化；凭据由脚本读取，无需显式传递。
 # stdout 返回正常响应；stderr 返回结构化错误 {"code":-100|-200,"msg":"..."}
-if ! resp=$(node "$SKILL_DIR/ima_api.cjs" "openapi/list_docs" '{"limit":10}' "$OPTS" 2>/tmp/ima_err); then
+if ! resp=$(ima_api "openapi/note/v1/list_notebook" '{"cursor":"0","limit":10}' 2>/tmp/ima_err); then
   err_json=$(cat /tmp/ima_err)
   err_code=$(echo "$err_json" | jq -r '.code // empty' 2>/dev/null)
   err_msg=$(echo "$err_json" | jq -r '.msg // empty' 2>/dev/null)

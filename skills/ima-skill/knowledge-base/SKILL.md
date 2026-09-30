@@ -1,5 +1,17 @@
 # Knowledge Base (知识库)
 
+## 初始化命令（每个新 Bash 会话先执行）
+
+以下 Bash 示例从 Codex 的安装目录调用脚本，与当前工作目录无关。若从仓库测试而非已安装 Skill 使用，将 `IMA_SKILL_DIR` 设为已确认的 `skills/ima-skill` 绝对路径。凭据由 `ima_api.cjs` 从既有环境变量或配置文件读取，不需要拼入命令行 JSON。
+
+```bash
+IMA_SKILL_DIR="${CODEX_HOME:-$HOME/.codex}/skills/ima-skill"
+test -f "$IMA_SKILL_DIR/ima_api.cjs" || { printf '%s\n' "IMA skill not installed at $IMA_SKILL_DIR" >&2; exit 1; }
+ima_api() { node "$IMA_SKILL_DIR/ima_api.cjs" "$@"; }
+```
+
+PowerShell 下安装根目录同样取 `$env:CODEX_HOME`（未设置时为 `Join-Path $HOME ".codex"`），脚本位于其 `skills/ima-skill` 子目录；不要逐字执行 Bash 语法，按根文档的 PowerShell UTF-8 请求模板处理 JSON。
+
 API base path: `openapi/wiki/v1` — 完整数据结构和接口参数详见 `references/api.md`。
 
 ## 接口决策表
@@ -69,7 +81,7 @@ GATE 4 [UPLOAD EXIT]
 ```bash
 # ── Step 1: preflight-check.cjs ← ⛔ GATE 1 ──
 # 有扩展名时自动推断；无扩展名时需传 --content-type
-PREFLIGHT=$(node .claude/skills/ima-skill/knowledge-base/scripts/preflight-check.cjs \
+PREFLIGHT=$(node "$IMA_SKILL_DIR/knowledge-base/scripts/preflight-check.cjs" \
   --file "/path/to/report.pdf")
 echo "$PREFLIGHT"
 # pass=false → 终止，将 reason 展示给用户。NEVER ask "want to try?"
@@ -84,26 +96,27 @@ CONTENT_TYPE=$(echo "$PREFLIGHT" | node -e "const d=JSON.parse(require('fs').rea
 # ── Step 3: check_repeated_names ← ⛔ GATE 3 ──
 # MANDATORY for ALL file uploads (media_type 1/3/4/5/7/9/13/14/15/20).
 # is_repeated=true → ask user: keep both (append _YYYYMMDDHHmmss) or cancel.
-ima_api "openapi/wiki/v1/check_repeated_names" "{
-  \"params\": [{\"name\": \"$FILE_NAME\", \"media_type\": $MEDIA_TYPE}],
-  \"knowledge_base_id\": \"<kb_id>\"
-}"
-# folder_id is optional — omit for root, include for subfolder
+KB_ID="<kb_id>"
+REPEATED_BODY=$(node -e '
+  const [name, mediaType, kb] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({params: [{name, media_type: Number(mediaType)}], knowledge_base_id: kb}));
+' -- "$FILE_NAME" "$MEDIA_TYPE" "$KB_ID")
+ima_api "openapi/wiki/v1/check_repeated_names" "$REPEATED_BODY"
+# folder_id is optional — omit for root; for a subfolder, add it inside JSON.stringify.
+# All dynamic strings must go through JSON.stringify; never interpolate them into JSON text.
 
 # ── Step 4: create_media ──
-CREATE_MEDIA_RESP=$(ima_api "openapi/wiki/v1/create_media" "{
-  \"file_name\": \"$FILE_NAME\",
-  \"file_size\": $FILE_SIZE,
-  \"content_type\": \"$CONTENT_TYPE\",
-  \"knowledge_base_id\": \"<kb_id>\",
-  \"file_ext\": \"$FILE_EXT\"
-}")
+CREATE_MEDIA_BODY=$(node -e '
+  const [name, size, contentType, kb, ext] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({file_name: name, file_size: Number(size), content_type: contentType, knowledge_base_id: kb, file_ext: ext}));
+' -- "$FILE_NAME" "$FILE_SIZE" "$CONTENT_TYPE" "$KB_ID" "$FILE_EXT")
+CREATE_MEDIA_RESP=$(ima_api "openapi/wiki/v1/create_media" "$CREATE_MEDIA_BODY")
 # Extract media_id, url, and cos_credential fields. code≠0 → terminate.
 # COS_URL is the file's accessible URL — used for verification in Step 6.
 
 # ── Step 5: cos-upload.cjs ← ⛔ GATE 5 (non-zero = STOP) ──
 # ⚠️ Large files may exceed default 120s timeout — set --timeout explicitly.
-node .claude/skills/ima-skill/knowledge-base/scripts/cos-upload.cjs \
+node "$IMA_SKILL_DIR/knowledge-base/scripts/cos-upload.cjs" \
   --file "/path/to/report.pdf" \
   --secret-id "<cos_credential.secret_id>" \
   --secret-key "<cos_credential.secret_key>" \
@@ -120,17 +133,13 @@ node .claude/skills/ima-skill/knowledge-base/scripts/cos-upload.cjs \
 # ── Step 6: add_knowledge ← ⛔ GATE 2 (title = file_name) ──
 # ONLY execute if Step 5 succeeded (exit code 0).
 # add_knowledge will verify the file was uploaded — no separate verify step needed.
-ima_api "openapi/wiki/v1/add_knowledge" "{
-  \"media_type\": $MEDIA_TYPE,
-  \"media_id\": \"<media_id>\",
-  \"title\": \"$FILE_NAME\",
-  \"knowledge_base_id\": \"<kb_id>\",
-  \"file_info\": {
-    \"cos_key\": \"<cos_credential.cos_key>\",
-    \"file_size\": $FILE_SIZE,
-    \"file_name\": \"$FILE_NAME\"
-  }
-}"
+MEDIA_ID="<media_id>"
+COS_KEY="<cos_credential.cos_key>"
+ADD_KNOWLEDGE_BODY=$(node -e '
+  const [name, mediaType, mediaId, kb, cosKey, size] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({media_type: Number(mediaType), media_id: mediaId, title: name, knowledge_base_id: kb, file_info: {cos_key: cosKey, file_size: Number(size), file_name: name}}));
+' -- "$FILE_NAME" "$MEDIA_TYPE" "$MEDIA_ID" "$KB_ID" "$COS_KEY" "$FILE_SIZE")
+ima_api "openapi/wiki/v1/add_knowledge" "$ADD_KNOWLEDGE_BODY"
 ```
 
 #### 批量上传时的重复处理
@@ -201,7 +210,7 @@ TEMP_DIR=$(mktemp -d)
 curl -sL -o "$TEMP_DIR/paper.pdf" "<url>"
 
 # 3. preflight-check.cjs ← ⛔ GATE 1
-PREFLIGHT=$(node .claude/skills/ima-skill/knowledge-base/scripts/preflight-check.cjs \
+PREFLIGHT=$(node "$IMA_SKILL_DIR/knowledge-base/scripts/preflight-check.cjs" \
   --file "$TEMP_DIR/paper.pdf" --content-type "$CONTENT_TYPE")
 # pass=false → terminate
 
