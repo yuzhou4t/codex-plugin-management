@@ -5,16 +5,16 @@ description: Safely and completely uninstall a macOS app, CLI, SDK, developer to
 
 # Uninstall macOS Tool
 
-Use an inventory -> scope confirmation -> removal -> fresh-environment verification workflow. Treat a complete uninstall as more than deleting one app bundle or binary.
+Identify the target and owned files, remove within the existing authorization, then verify from a fresh environment. Treat a complete uninstall as more than deleting one app bundle or binary.
 
 ## Safety Contract
 
 - Start read-only. Identify the installation method and exact owned paths before deleting anything.
-- For a broad or multi-path removal, show the exact deletion scope and obtain explicit confirmation before irreversible commands.
+- An explicit uninstall request covers the identified installation and its ordinary owned caches and remnants. Summarize the scope and proceed; ask only about user documents, projects, ambiguous ownership, or consequential effects not covered by that request.
 - Prefer the product's uninstaller or original package manager when available. Remove residual paths only after confirming ownership.
 - Never remove a shared runtime, package-manager root, shell configuration file, or parent directory just because one target lives inside it.
 - Avoid printing full shell-config diffs or environment dumps. Search for target-specific markers and redact credential-like values.
-- Preserve unrelated files and processes. If ownership is ambiguous, stop and report the ambiguity.
+- Preserve unrelated files and processes. If ownership is ambiguous, leave that item untouched, continue independent authorized removal, and report what needs a decision.
 
 ## Workflow
 
@@ -32,7 +32,7 @@ Use an inventory -> scope confirmation -> removal -> fresh-environment verificat
 3. Present the scope.
    - List exact paths grouped as app/launcher, executable/package, configuration/PATH, background service, cache/log, project or user data, and installer remnant.
    - Mark shared or uncertain items separately and exclude them from the deletion set.
-   - State whether project files or user-created data are included. Wait for explicit confirmation when deletion is irreversible or the scope is broad.
+   - State whether project files or user-created data are included. Reuse prior specific authorization; ask only for newly discovered consequential scope.
 
 4. Remove narrowly.
    - Quit the target app and stop only its identified background service.
@@ -46,7 +46,7 @@ Use an inventory -> scope confirmation -> removal -> fresh-environment verificat
    - Confirm target-specific shell markers, LaunchAgents, running processes, and app bundles are gone when applicable.
    - Report retained paths, failed removals, and any shared components intentionally left in place.
 
-## Stop Conditions
+## Items requiring resolution
 
 - The target name matches multiple unrelated products.
 - A candidate path contains user documents or project data that the user did not explicitly include.

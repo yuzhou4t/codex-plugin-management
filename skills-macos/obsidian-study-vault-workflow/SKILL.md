@@ -22,7 +22,7 @@ Use `ima-skill` together with this skill when the task needs IMA OpenAPI calls. 
 
 ## Source-To-Study Pattern
 
-For IMA, public-account, article, and paper-reading ingestion, use this landing pattern:
+For ingestion, use the existing note structure and only the layers needed by the request. The following are options, not four mandatory new files:
 
 1. `来源记录` or source/article page: source metadata, traceable quote or retrieval note, attachment/source pointer, and unresolved verification notes.
 2. `解释页` or reading note: user-friendly explanation in readable Markdown, not a raw paste.
@@ -37,7 +37,7 @@ Keep source boundaries explicit. Do not copy a full third-party article into the
 - Source notes live under `04_资料源/计量经济学/`.
 - Generic concepts and derivations live under `03_通用知识库/计量经济学/`.
 - Long derivations belong in `03_通用知识库/计量经济学/公式推导/` and should be linked from chapter notes instead of duplicated there.
-- When adding a durable derivation or concept, update the relevant MOC, README, and `90_系统/处理日志/处理日志.md`.
+- Link a new derivation or concept from the relevant index when needed for discovery. Update a README or processing log only when the current vault rules or request require it; do not manufacture changes in every index.
 
 ## Git Safety
 
@@ -47,7 +47,7 @@ Before any vault publish or commit:
 2. Inspect `git status --short` and `git diff --stat`.
 3. Protect private/local state such as `.claudian/`, `00_收集箱/`, `.obsidian/plugins/`, private HFT drafts, caches, and raw attachment folders.
 4. For the existing `origin https://github.com/yuzhou4t/obsidian-study.git` remote, do not force-push unless the user explicitly asks and understands the history rewrite.
-5. If unrelated remote history appears, prefer the established safe path: fetch remote, merge with `-s ours --allow-unrelated-histories`, then push.
+5. If unrelated remote history appears, inspect the histories and preserve both. Do not automatically use `-s ours --allow-unrelated-histories`; resolve the concrete integration choice before changing history or pushing.
 
 ## Response Shape
 
