@@ -1,76 +1,18 @@
 ---
 name: git-finish
-description: Automatically close out a main implementation task with Git. Use whenever Codex created or modified durable files in a Git repository, including features, fixes, refactors, project milestones, and aggregated subagent work, even if the user did not mention Git or request a commit. Inspect scope, verify safety, create a focused local commit when changes are task-owned, or report an explicit safe terminal state.
+description: 在 Git 仓库内对已验证的持久实现进行定点暂存和本地提交，遵循用户与项目约定。也用于用户明确要求提交或 Git 收尾；不把非仓库任务、只读审阅或临时产物变成 Git 任务。
 ---
 
-# Git Finish
+# Git 收尾
 
-## Core Rule
+对仓库内已验证的持久实现，按当前用户授权和项目约定完成本地提交。只读审阅、非仓库任务、临时分析和生成的交付文件不必套用 Git 流程。
 
-Treat Git closeout as a mandatory final gate for the main implementation task, not as an optional user reminder. If the task changed durable files inside a Git repository and verification passed, inspect and commit task-owned changes before the final completion response.
+1. 检查相关路径的工作树和暂存状态，识别本任务改动及既有修改；不为收尾扫描无关文件内容。
+2. 复用本轮已有的有效验证结果。只有代码又发生变化、检查失败或出现具体疑点时才重跑相关检查。
+3. 查看 diff，运行 `git diff --check`，只暂存本任务文件或可安全分离的片段。已有暂存内容也属于用户修改，不能混入提交。
+4. 审阅待提交差异后创建聚焦的本地提交。用户要求暂不提交时保留修改；混合修改无法安全拆分时保留现场并说明，继续完成其他交付。
+5. 核对提交和剩余工作树状态。简要报告提交及相关未提交项，不要求固定状态口令或列出无关文件。
 
-Subagents do not commit by default. The main agent owns the consolidated task commit unless commit ownership was explicitly delegated.
+不要盲目 `git add .`，不要提交凭据、缓存或无关产物。主代理通常负责汇总提交，除非已把提交职责交给执行者。
 
-## Safety Boundaries
-
-- Preserve pre-existing user changes.
-- Never stage secrets, caches, private drafts, unrelated files, or bulky generated artifacts by accident.
-- Do not commit a failed or materially unverified implementation as successful work.
-- Do not push unless the user requested it or the remote and visibility policy are explicit.
-- Never use a blind `git add .` in a mixed or unreviewed worktree.
-
-## Required Workflow
-
-1. Locate and inspect the repository:
-
-```bash
-git rev-parse --show-toplevel
-git branch --show-current
-git status --short
-git diff --stat
-git diff --check
-```
-
-2. Classify every changed path.
-   - Identify task-owned, pre-existing user, generated, secret, and unrelated changes.
-   - Include task-owned changes produced by delegated subagents in the main task scope.
-
-3. Confirm verification evidence.
-   - Use fresh tests, build, lint, smoke checks, or artifact inspection appropriate to the change.
-   - If verification failed, do not create a success commit merely to make the tree clean.
-
-4. Stage only task-owned paths:
-
-```bash
-git add path/to/file
-git diff --cached --stat
-git diff --cached --check
-```
-
-Review the staged diff before committing. Use patch staging when task and unrelated edits share a file and can be separated safely; otherwise stop with a blocked state.
-
-5. Create a focused local commit without waiting for another reminder:
-
-```bash
-git commit -m "Describe focused change"
-```
-
-6. Re-check the result:
-
-```bash
-git status --short
-git log -1 --oneline
-```
-
-Remaining unrelated user changes are allowed only when they are identified explicitly in the final response.
-
-## Required Terminal State
-
-Return exactly one Git closeout state:
-
-- `committed: <sha>` — task-owned verified changes were committed.
-- `clean / no-op` — no durable task change exists or the task change was already committed.
-- `not a Git repo` — tell the user and offer `git init` when appropriate.
-- `blocked: <reason>` — committing is unsafe because ownership is unclear, unrelated changes cannot be separated, verification failed, secrets/generated artifacts are in scope, or the user said not to commit.
-
-Do not silently skip Git closeout. Do not report a main implementation task fully complete without one of these states.
+推送、公开发布及改写远端历史分别判断授权；本地提交不自动授权这些动作。没有 Git 仓库不构成任务阻塞，也不需要主动建议 `git init`。提交失败时如实区分“实现已验证”和“提交尚未完成”。

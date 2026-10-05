@@ -17,7 +17,7 @@ description: Use when an HFT association article must move from source verificat
 
 ## 一、确认范围
 
-开始前确认：
+从上下文和已有材料确定，只有实质歧义才询问：
 
 - 目标文章、目标读者和文章状态。
 - 本轮是内容改写、结构调整、截图补充、Word 生成、飞书排版，还是仅修格式。
@@ -65,7 +65,7 @@ description: Use when an HFT association article must move from source verificat
 
 ## 六、规划和处理截图
 
-- 先冻结正文结构，再建立截图清单。
+- 按当前正文结构安排截图；正文调整时同步受影响图片，不设置冻结步骤。
 - 每张图只承担一个主要任务：入口、操作、状态或结果。
 - 记录编号、所属章节、图注、来源、当前状态和是否需要打码。
 - 优先使用用户真实操作截图；官方截图需保留来源，不使用生成图片冒充产品界面。
@@ -100,10 +100,7 @@ description: Use when an HFT association article must move from source verificat
 
 ## 九、系统性复核
 
-不要只修用户指出的一处。对全文执行两轮检查：
-
-1. 按候选清单逐项核对代码块、图片、图注、标题和术语。
-2. 从文首重新扫描到文末，确认没有同类遗漏。
+按任务范围检查修改处及相关同类问题。用户要求全文整理时检查全文；局部修复不强制两轮全稿扫描。新改动影响其他章节时再扩大检查。
 
 格式修复任务还必须满足：
 
@@ -112,11 +109,11 @@ description: Use when an HFT association article must move from source verificat
 - 飞书代码块数量与本地 Markdown fenced code block 范围能够对账。
 - 飞书最终结构同步回本地 Markdown，避免下次导入复发。
 
-最终交付前读取并执行 [production-checklist.md](references/production-checklist.md)。
+完整生产任务可按需参考 [production-checklist.md](references/production-checklist.md)，只执行与本次交付有关的项。
 
 ## 十、停止条件
 
-出现以下情况时停止写入并说明阻塞：
+以下情况只暂停受影响的写入，继续可独立完成的核对、草稿或其他已授权产物，并说明具体阻塞：
 
 - 用户要求从 IMA 或指定来源取材，但尚未取得真实内容。
 - 无法读取飞书当前正文或确认最新 revision。

@@ -56,7 +56,7 @@ For a repair:
 python3 "$GROK_DELEGATOR_DIR/scripts/grok_delegate.py" resume --receipt /absolute/path/receipt.json --feedback /absolute/path/feedback.txt
 ```
 
-Stop after two evidence-based repair attempts with the same blocker. Do not change providers, loosen the sandbox, or add permissions merely to make the status green.
+If a blocker repeats without new evidence, reassess the cause and approach. Continue a justified repair within scope; return only the part requiring missing information, authority, or external change, and complete independent work. Do not change providers, loosen the sandbox, or add permissions merely to make the status green.
 
 ## Interpret receipts
 
