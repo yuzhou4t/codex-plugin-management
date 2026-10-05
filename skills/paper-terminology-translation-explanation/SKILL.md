@@ -66,7 +66,7 @@ For a new or ambiguous term, present:
 建议译名及理由：
 ```
 
-If multiple translations remain reasonable, ask the user to choose before adding one to the stable terminology table. Do not silently fix a disputed translation.
+Choose a reasonable translation from the paper context and explain material ambiguity briefly. Ask only when the user is resolving an established terminology dispute or the choice changes the meaning; ordinary translation choices should not stop the explanation.
 
 ## Stable AI Scientist Terminology
 
@@ -106,7 +106,7 @@ When comparing a new paper or system version with an earlier one, explain in thi
 5. what limitation remains;
 6. candidate implications for our architecture;
 7. candidate domain mapping, if relevant;
-8. wait for user discussion and correction.
+8. finish the requested explanation, then incorporate user corrections when offered.
 
 For AI Scientist-v2, compare with v1 whenever the comparison is material.
 
@@ -124,7 +124,7 @@ For AI Scientist-v2, compare with v1 whenever the comparison is material.
 Before answering, verify:
 
 - important terms were explained at first occurrence;
-- the Chinese translation is stable or explicitly pending confirmation;
+- the Chinese translation is consistent and material uncertainty is explained;
 - paper facts and our proposals are visibly separated;
 - version comparison is included when required;
 - no domain extension is described as a paper contribution.
