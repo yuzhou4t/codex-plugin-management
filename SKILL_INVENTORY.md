@@ -9,7 +9,7 @@
 | `ai-paper-scout` | 自维护；AI 论文检索与初筛 |
 | `aihot` | 本地衍生版；当前 AI HOT 资讯查询 |
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
-| `git-finish` | 自维护；Git 任务收尾 |
+| `git-finish` | 自维护；Git 初始化、阶段保存与最终收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
 | `grok-delegator` | 自维护；Codex 规划、Grok 调研或编码、Codex 独立验收 |
 | `gsap-core` | GSAP 官方快照 |
