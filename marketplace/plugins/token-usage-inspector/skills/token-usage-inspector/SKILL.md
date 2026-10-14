@@ -5,7 +5,7 @@ description: Inspect current or historical Codex token usage from local rollout 
 
 # Token Usage Inspector
 
-Read Codex's local `rollout-*.jsonl` logs without contacting a model or uploading conversation data. For current logs, use native per-call `token_usage_record` counters. For older logs that predate those records, reconstruct increments from cumulative `token_count` snapshots and remove spawned-agent inherited replay.
+Read Codex's local `rollout-*.jsonl` logs without contacting a model or uploading conversation data. Exact-session views support both native per-call `token_usage_record` counters and `task_started` / `token_count` events. Historical views aggregate native calls or reconstruct increments from cumulative `token_count` snapshots, removing spawned-agent inherited replay.
 
 ## Resolve the task
 
@@ -13,7 +13,7 @@ Use the bundled `scripts/inspect_token_usage.py` relative to this file.
 
 - If the user supplies a Codex task/thread ID, use `--thread-id ID`.
 - If the user supplies a rollout file, use `--session PATH`.
-- If the target is unclear, use `--list-sessions` and identify the intended local task by timestamp and ID. Add `--include-prompt` only when a prompt preview is necessary and safe to show.
+- If the target is unclear, use `--list-sessions` and identify the intended local task by timestamp and ID. Add `--include-prompt` only when a prompt preview is necessary and safe to show; ordinary user messages are associated with the following `task_started` event when they do not carry an explicit turn ID.
 - Use `--latest` only when the most recently modified local session is known to be the requested task. Concurrent tasks can make this ambiguous.
 
 The script searches `${CODEX_HOME}/sessions` and `${CODEX_HOME}/archived_sessions` when `CODEX_HOME` is set, otherwise the corresponding paths under `~/.codex`. Use `--active-only` only when archived logs must be excluded. A deleted log, cloud-only task, or ChatGPT web/shared conversation may have no corresponding local record; report that boundary instead of estimating.

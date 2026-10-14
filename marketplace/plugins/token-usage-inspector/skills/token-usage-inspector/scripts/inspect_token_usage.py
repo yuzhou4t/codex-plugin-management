@@ -9,6 +9,7 @@ import io
 import json
 import os
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from dataclasses import dataclass
@@ -63,22 +64,6 @@ def session_files(root: Path, include_archived: bool = True) -> list[Path]:
     return sorted(files, key=lambda path: path.stat().st_mtime, reverse=True)
 
 
-def load_records(path: Path) -> Iterable[dict[str, Any]]:
-    size = path.stat().st_size
-    with path.open(encoding="utf-8") as handle:
-        while True:
-            line = handle.readline()
-            if not line:
-                return
-            try:
-                yield json.loads(line)
-            except json.JSONDecodeError:
-                # A live writer may temporarily leave only the final line incomplete.
-                if handle.tell() >= size:
-                    return
-                raise
-
-
 def session_info(path: Path) -> SessionInfo | None:
     for record in load_records(path):
         if record.get("type") != "session_meta":
@@ -125,13 +110,32 @@ def resolve_session(args: argparse.Namespace) -> Path:
         if not path.is_file():
             raise FileNotFoundError(f"Session file not found: {path}")
         return path
-    files = session_files(codex_home(args.codex_home), include_archived=not args.active_only)
+    files = session_files(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False))
     if args.thread_id:
         matches = [path for path in files if args.thread_id in path.name]
         if not matches:
             raise FileNotFoundError(f"No local rollout log found for task ID: {args.thread_id}")
         return matches[0]
+    if not args.latest:
+        raise ValueError("Choose --session, --thread-id, or explicit --latest; use --list-sessions to identify a task")
+    if not files:
+        raise FileNotFoundError("No local Codex rollout logs found")
     return files[0]
+
+
+def load_records(path: Path) -> Iterable[dict[str, Any]]:
+    snapshot = path.read_bytes()
+    lines = snapshot.splitlines()
+    for index, raw_line in enumerate(lines):
+        try:
+            yield json.loads(raw_line.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            # The one immutable read can end inside the live writer's final
+            # UTF-8 codepoint or JSON object. A malformed terminated/interior
+            # line is persistent corruption and must still surface.
+            if index == len(lines) - 1 and not snapshot.endswith((b"\n", b"\r")):
+                return
+            raise
 
 
 def content_text(payload: dict[str, Any]) -> str:
@@ -146,6 +150,12 @@ def prompt_preview(messages: list[str]) -> str:
     useful = [message for message in messages if not message.startswith(WRAPPER_PREFIXES)]
     text = useful[-1] if useful else (messages[-1] if messages else "")
     return text[:120] + ("…" if len(text) > 120 else "")
+
+
+def append_prompt(messages: list[str], text: str) -> None:
+    normalized = " ".join(text.split())
+    if normalized and (not messages or messages[-1] != normalized):
+        messages.append(normalized)
 
 
 def usage_fields(usage: dict[str, Any] | None) -> dict[str, int]:
@@ -172,24 +182,90 @@ def subtract_usage(current: dict[str, int], prior: dict[str, int]) -> dict[str, 
     return {field: current[field] - prior[field] for field in USAGE_FIELDS}
 
 
+def usage_delta(total: dict[str, Any], baseline: dict[str, int]) -> dict[str, int]:
+    counters = {key: int(total.get(key, 0) or 0) for key in USAGE_FIELDS}
+    if any(counters[key] < baseline.get(key, 0) for key in USAGE_FIELDS):
+        baseline = {}
+    return {key: counters[key] - baseline.get(key, 0) for key in USAGE_FIELDS}
+
+
 def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Keep the original exact-session view for native per-call records."""
+    """Read both per-call records and task-started native event counters."""
     prompts: dict[str, list[str]] = defaultdict(list)
-    final_turns: set[str] = set()
+    terminal_status: dict[str, str] = {}
+    pending_prompts: list[str] = []
     call_counts: dict[str, int] = defaultdict(int)
     call_rows: list[dict[str, Any]] = []
     turn_order: list[str] = []
     latest_by_turn: dict[str, dict[str, Any]] = {}
+    active_turn_id: str | None = None
+    previous_total_usage: dict[str, int] = {}
+    baseline_by_turn: dict[str, dict[str, int]] = {}
 
     for record in load_records(path):
         payload = record.get("payload", {})
+        if record.get("type") == "event_msg":
+            event_type = payload.get("type")
+            if event_type == "user_message" and include_prompt:
+                message = payload.get("message")
+                if isinstance(message, str):
+                    append_prompt(prompts[active_turn_id] if active_turn_id else pending_prompts, message)
+            if event_type == "task_started" and payload.get("turn_id"):
+                active_turn_id = str(payload["turn_id"])
+                baseline_by_turn[active_turn_id] = dict(previous_total_usage)
+                if active_turn_id not in latest_by_turn:
+                    turn_order.append(active_turn_id)
+                    latest_by_turn[active_turn_id] = {
+                        "timestamp_utc": record.get("timestamp", ""),
+                        **usage_fields({}),
+                    }
+                if pending_prompts:
+                    prompts[active_turn_id].extend(pending_prompts)
+                    pending_prompts.clear()
+            elif event_type in {"task_complete", "turn_aborted"}:
+                terminal_turn_id = payload.get("turn_id") or active_turn_id
+                if terminal_turn_id:
+                    terminal_turn_id = str(terminal_turn_id)
+                    terminal_status[terminal_turn_id] = "complete" if event_type == "task_complete" else "aborted"
+                if active_turn_id == terminal_turn_id:
+                    active_turn_id = None
+            elif event_type == "token_count" and active_turn_id:
+                info = payload.get("info")
+                if not isinstance(info, dict):
+                    continue
+                last_usage = info.get("last_token_usage")
+                total_usage = info.get("total_token_usage")
+                if not isinstance(last_usage, dict) or not isinstance(total_usage, dict):
+                    continue
+                if active_turn_id not in latest_by_turn:
+                    turn_order.append(active_turn_id)
+                call_counts[active_turn_id] += 1
+                call_rows.append(
+                    {
+                        "turn": turn_order.index(active_turn_id) + 1,
+                        "call": call_counts[active_turn_id],
+                        "turn_id": active_turn_id,
+                        "timestamp_utc": record.get("timestamp", ""),
+                        **usage_fields(last_usage),
+                    }
+                )
+                latest_by_turn[active_turn_id] = {
+                    "timestamp_utc": record.get("timestamp", ""),
+                    **usage_fields(usage_delta(total_usage, baseline_by_turn.get(active_turn_id, {}))),
+                }
+                previous_total_usage = {key: int(total_usage.get(key, 0) or 0) for key in USAGE_FIELDS}
+                continue
         if record.get("type") == "response_item" and payload.get("type") == "message":
             metadata = payload.get("internal_chat_message_metadata_passthrough", {})
-            turn_id = metadata.get("turn_id")
-            if turn_id and payload.get("role") == "user":
-                prompts[turn_id].append(content_text(payload))
+            turn_id = metadata.get("turn_id") if isinstance(metadata, dict) else None
+            if payload.get("role") == "user" and include_prompt:
+                message = content_text(payload)
+                if turn_id:
+                    append_prompt(prompts[str(turn_id)], message)
+                else:
+                    append_prompt(prompts[active_turn_id] if active_turn_id else pending_prompts, message)
             elif turn_id and payload.get("role") == "assistant" and payload.get("phase") in FINAL_PHASES:
-                final_turns.add(turn_id)
+                terminal_status[str(turn_id)] = "complete"
 
         if record.get("type") != "token_usage_record":
             continue
@@ -214,16 +290,20 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
         }
 
     turn_rows = []
+    previews = {turn_id: prompt_preview(prompts[turn_id]) for turn_id in turn_order} if include_prompt else {}
     for number, turn_id in enumerate(turn_order, start=1):
         row: dict[str, Any] = {
             "turn": number,
-            "status": "complete" if turn_id in final_turns else "in_progress",
+            "status": terminal_status.get(turn_id, "in_progress"),
             "turn_id": turn_id,
             **latest_by_turn[turn_id],
         }
         if include_prompt:
-            row["prompt"] = prompt_preview(prompts[turn_id])
+            row["prompt"] = previews[turn_id]
         turn_rows.append(row)
+    if include_prompt:
+        for row in call_rows:
+            row["prompt"] = previews.get(str(row["turn_id"]), "")
     return turn_rows, call_rows
 
 
@@ -319,7 +399,7 @@ def read_usage_events(info: SessionInfo) -> tuple[list[dict[str, Any]], list[dic
 
 
 def selected_infos(args: argparse.Namespace) -> list[SessionInfo]:
-    infos = all_session_info(codex_home(args.codex_home), include_archived=not args.active_only)
+    infos = all_session_info(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False))
     excluded = set(normalize_repeat(args.exclude_thread))
     return [
         info
@@ -475,7 +555,7 @@ def generic_table(rows: list[dict[str, Any]], empty_message: str = "No matching 
 
 def table(rows: list[dict[str, Any]], granularity: str) -> str:
     if not rows:
-        return "No native token_usage_record entries found in this session. Use aggregate mode for legacy logs."
+        return "No native token usage records found."
     columns = ["turn", "call" if granularity == "call" else "status"]
     columns.extend(
         [
@@ -499,7 +579,7 @@ def serialize(rows: list[dict[str, Any]], output_format: str, granularity: str |
         if not rows:
             return ""
         buffer = io.StringIO()
-        writer = csv.DictWriter(buffer, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(buffer, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
         return buffer.getvalue()
@@ -507,27 +587,35 @@ def serialize(rows: list[dict[str, Any]], output_format: str, granularity: str |
 
 
 def list_local_sessions(args: argparse.Namespace) -> None:
+    files = session_files(codex_home(args.codex_home))
+    if args.output:
+        output = Path(args.output).expanduser()
+        if any(paths_alias(output, source) for source in files):
+            raise ValueError("--output must not alias a native Codex rollout log")
     rows = []
-    for info in all_session_info(codex_home(args.codex_home), include_archived=not args.active_only)[: args.limit]:
+    listed_files = session_files(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False))
+    for path in listed_files[: args.limit]:
+        info = session_info(path) or SessionInfo(path, task_id_from_name(path), "", "", "root", False, False)
         row = {
-            "started": info.started,
+            "modified_local": datetime.fromtimestamp(path.stat().st_mtime).astimezone().isoformat(timespec="seconds"),
             "task_id": info.task_id,
+            "path": str(info.path),
+            "started": info.started,
             "source": info.source,
             "project": info.project,
-            "path": str(info.path),
         }
         if args.include_prompt:
             turns, _ = parse_usage(info.path, include_prompt=True)
             row["prompt"] = turns[-1].get("prompt", "") if turns else ""
         rows.append(row)
-    print(serialize(rows, args.format))
+    write_output(args, serialize(rows, args.format))
 
 
 def list_projects(args: argparse.Namespace) -> None:
     projects: dict[str, dict[str, Any]] = {}
     tasks: dict[str, set[str]] = defaultdict(set)
     files: dict[str, int] = defaultdict(int)
-    for info in all_session_info(codex_home(args.codex_home), include_archived=not args.active_only):
+    for info in all_session_info(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False)):
         project = info.project or "(unknown)"
         projects.setdefault(project, {"project": project, "first_seen": info.started, "last_seen": info.started})
         projects[project]["first_seen"] = min(projects[project]["first_seen"], info.started)
@@ -543,9 +631,9 @@ def list_projects(args: argparse.Namespace) -> None:
 def write_output(args: argparse.Namespace, rendered: str, heading: str | None = None) -> None:
     content = rendered if args.format in {"csv", "json"} or not heading else f"{heading}\n\n{rendered}"
     if args.output:
-        Path(args.output).expanduser().write_text(content, encoding="utf-8")
+        atomic_write_text(Path(args.output).expanduser(), content)
     else:
-        if args.watch and sys.stdout.isatty():
+        if getattr(args, "watch", None) and sys.stdout.isatty():
             print("\033[2J\033[H", end="")
         print(content)
 
@@ -570,6 +658,28 @@ def historical_mode(args: argparse.Namespace) -> bool:
         or args.include_subdirs
         or (args.thread_id and args.historical)
     )
+
+
+def atomic_write_text(target: Path, content: str) -> None:
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=target.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def paths_alias(left: Path, right: Path) -> bool:
+    if left.resolve() == right.resolve():
+        return True
+    try:
+        return left.exists() and right.exists() and os.path.samefile(left, right)
+    except OSError:
+        return False
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -630,6 +740,12 @@ def main() -> int:
             write_output(args, serialize(rows, args.format))
             return 0
         path = resolve_session(args)
+        if args.output and paths_alias(Path(args.output).expanduser(), path):
+            raise ValueError("--output must not alias the selected Codex rollout log")
+        if args.watch is not None and args.watch <= 0:
+            raise ValueError("--watch must be greater than zero")
+        if args.watch is not None and args.format in {"csv", "json"} and not args.output:
+            raise ValueError("--watch with CSV or JSON requires --output so each refresh remains one valid document")
         while True:
             write_snapshot(args, path)
             if args.watch is None:
