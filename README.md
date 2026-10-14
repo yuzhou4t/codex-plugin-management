@@ -52,6 +52,17 @@ $env:PLUGIN_MANAGER_CODEX_BIN = "C:\path\to\codex.exe"
 .\scripts\install-windows.ps1
 ```
 
+## Matt Pocock Skills 官方版本
+
+Matt Pocock Skills 直接从作者的 GitHub marketplace 安装，使用原版内容，不维护本地定制副本：
+
+```bash
+codex plugin marketplace add mattpocock/skills
+codex plugin add mattpocock-skills@mattpocock
+```
+
+2026-10-14 已切换到官方主分支 `49dd158d1076134a641b33efb035946536778336`（上游版本号仍为 `1.3.1`），移除此前的本地包和旧 curated 安装；4 个技能中的中文命名与标题定制已撤销。官方说明见 [mattpocock/skills](https://github.com/mattpocock/skills)。
+
 ## AntiGravity 前端 Skill 互通
 
 本机 AntiGravity 通过 `~/.gemini/config/skills/` 中的链接直接读取仓库源文件：自维护的 `personal-frontend-builder`，以及 Build Web Apps 插件的 `frontend-app-builder`。前者也供 Codex 使用；后者在 Codex 中由插件提供。修改仓库源文件后，AntiGravity 无需再维护另一份副本。GSAP 动效专题则链接到这台 Mac 已安装的 Codex `gsap` Skill，仅在项目使用 GSAP 时启用。
