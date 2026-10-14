@@ -8,8 +8,9 @@
 
 - `skills/`：24 个跨平台 Skill。macOS 与 Windows 安装脚本都会安装。
 - `skills-macos/`：9 个依赖 macOS 或这台 Mac 项目路径的 Skill。只由 macOS 安装脚本安装。
-- `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero 和 HyperFrames。
+- `marketplace/`：名为 `plugin-management` 的本地 marketplace，当前包含 Build Web Apps、Test Android Apps、Zotero、HyperFrames 和 Token Usage Inspector。
 - `profiles/`：经过脱敏的全局 Agent 工作规则和 Codex 偏好模板；不会覆盖机器上的完整配置。
+- `skills/personal-frontend-builder/`：前端构建与提示词整理 Skill，Codex 和 AntiGravity 共用同一份源文件。
 - `manifests/`：插件、外部 Skill 来源和经同步 Skill 的可审计清单。
 - `archive/`：不再主动安装的历史 Skill 和插件。安装脚本不会处理这里的内容。
 - `THIRD_PARTY_NOTICES.md`：第三方 Skill / 插件的来源、版本和许可证说明。
@@ -51,6 +52,31 @@ $env:PLUGIN_MANAGER_CODEX_BIN = "C:\path\to\codex.exe"
 .\scripts\install-windows.ps1
 ```
 
+## Matt Pocock Skills 官方版本
+
+Matt Pocock Skills 直接从作者的 GitHub marketplace 安装，使用原版内容，不维护本地定制副本：
+
+```bash
+codex plugin marketplace add mattpocock/skills
+codex plugin add mattpocock-skills@mattpocock
+```
+
+2026-10-14 已切换到官方主分支 `49dd158d1076134a641b33efb035946536778336`（上游版本号仍为 `1.3.1`），移除此前的本地包和旧 curated 安装；4 个技能中的中文命名与标题定制已撤销。官方说明见 [mattpocock/skills](https://github.com/mattpocock/skills)。
+
+## AntiGravity 前端 Skill 互通
+
+本机 AntiGravity 通过 `~/.gemini/config/skills/` 中的链接直接读取仓库源文件：自维护的 `personal-frontend-builder`，以及 Build Web Apps 插件的 `frontend-app-builder`。前者也供 Codex 使用；后者在 Codex 中由插件提供。修改仓库源文件后，AntiGravity 无需再维护另一份副本。GSAP 动效专题则链接到这台 Mac 已安装的 Codex `gsap` Skill，仅在项目使用 GSAP 时启用。
+
+在另一台 Mac 克隆仓库并安装 Codex Skill 后，于仓库根目录执行以下命令建立 AntiGravity 链接（目标位置已有文件时命令会停止，不会覆盖）：
+
+```bash
+mkdir -p "$HOME/.gemini/config/skills"
+ln -s "$PWD/skills/personal-frontend-builder" "$HOME/.gemini/config/skills/personal-frontend-builder"
+ln -s "$PWD/marketplace/plugins/build-web-apps/skills/frontend-app-builder" "$HOME/.gemini/config/skills/frontend-app-builder"
+```
+
+这台 Mac 还把已安装的 Codex `gsap` Skill 链接给 AntiGravity；它依赖本机路径，不在上面的跨设备命令中。不要复制 Figma、Canva、Vercel 等依赖其插件工具的 Skill 当作通用指令。Mac 安装脚本会把新安装的 `personal-frontend-builder` 链接到仓库，重跑时保留链接；Windows 安装脚本仍复制 Skill 文件。
+
 ## 更新
 
 在任意电脑上拉取仓库后重新运行对应安装脚本：
@@ -76,6 +102,10 @@ python3 scripts/doctor.py
 ## Skill 自动同步到 GitHub
 
 `sync-skill-to-github` 用于在新建或修改自维护 Skill 后完成敏感信息扫描、复制、校验、定点提交和推送。飞书、Agently 等第三方 Skill 不复制到本仓库，只把官方 well-known 或 GitHub 下载链接登记到 `manifests/external-skills.json`，让新 Agent 直接从上游安装。凭据、运行状态及未确认的本机路径会阻止上传。
+
+## Token 使用量查询
+
+marketplace 中的 `token-usage-inspector` 插件读取 Codex 本机现存及归档的 `rollout-*.jsonl`：新版日志使用原生 `token_usage_record`，旧版日志从累计 `token_count` 快照计算增量并排除子任务继承回放。它既能查看单个任务的轮次和调用，也能按项目、全部历史任务、日期、模型、任务和来源汇总，支持 CSV/JSON 导出与实时刷新；默认不显示提示词，也不会上传会话日志。
 
 ## 安全边界
 
