@@ -1,0 +1,6 @@
+interface:
+  display_name: "演示发布检查清单"
+  short_description: "演示前与公开发布前的数字、密钥、端口防火墙和外网验证检查"
+  default_prompt: "使用 $demo-release-checklist 在演示或部署前逐项检查数字口径、密钥、端口防火墙和外网可访问性。"
+policy:
+  allow_implicit_invocation: true
