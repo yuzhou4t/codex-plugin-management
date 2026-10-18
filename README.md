@@ -101,6 +101,8 @@ python3 scripts/doctor.py
 
 ## Skill 自动同步到 GitHub
 
+同步范围以可复用的通用 Skill 为主。本机专用、个人教学或绑定私有项目与数据的 Skill 默认仅保留在本机，不要求上传，也不以本机安装目录与仓库完全一致为目标。已有 `skills-macos/` 条目按现有清单保留；后续新增或更新仍需单独判断是否适合上传。
+
 `sync-skill-to-github` 用于在新建或修改自维护 Skill 后完成敏感信息扫描、复制、校验、定点提交和推送。飞书、Agently 等第三方 Skill 不复制到本仓库，只把官方 well-known 或 GitHub 下载链接登记到 `manifests/external-skills.json`，让新 Agent 直接从上游安装。凭据、运行状态及未确认的本机路径会阻止上传。
 
 ## Token 使用量查询
