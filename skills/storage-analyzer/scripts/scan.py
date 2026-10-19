@@ -155,8 +155,10 @@ def scan_macos():
 # ======================================================================
 # Windows  (UNTESTED on this build — stdlib only: os, shutil, ctypes)
 # ======================================================================
-def dir_size_bytes(path):
-    """Recursive size in bytes via os.scandir. Skips symlinks and unreadable."""
+def dir_size_bytes(path, denied_paths=None):
+    """Return readable bytes; collect omitted paths so totals are not final."""
+    if denied_paths is None:
+        denied_paths = []
     total = 0
     try:
         with os.scandir(path) as it:
@@ -167,12 +169,21 @@ def dir_size_bytes(path):
                     if e.is_file(follow_symlinks=False):
                         total += e.stat(follow_symlinks=False).st_size
                     elif e.is_dir(follow_symlinks=False):
-                        total += dir_size_bytes(e.path)
-                except (PermissionError, OSError):
-                    continue
-    except (PermissionError, OSError):
-        pass
+                        total += dir_size_bytes(e.path, denied_paths)
+                except OSError:
+                    denied_paths.append(e.path)
+    except OSError:
+        denied_paths.append(path)
     return total
+
+
+def size_row(path, kb, denied_paths):
+    row = {"name": os.path.basename(path.rstrip("\\/")) or path,
+           "path": path, "size_kb": kb, "size_h": human(kb)}
+    if denied_paths:
+        row.update(denied=True, partial=True, denied_paths=sorted(set(denied_paths)))
+        row["size_h"] = human(kb) + " (partial)"
+    return row
 
 
 def scandir_children(path, min_kb=51200, limit=40):
@@ -182,23 +193,24 @@ def scandir_children(path, min_kb=51200, limit=40):
     results = []
     try:
         entries = sorted(os.listdir(path))
-    except PermissionError:
-        return [{"name": "(permission denied)", "path": path,
-                 "size_kb": 0, "size_h": "?", "denied": True}]
+    except OSError:
+        return [size_row(path, 0, [path])]
     for name in entries:
         child = os.path.join(path, name)
         if os.path.islink(child):
             continue
+        denied_paths = []
         try:
             kb = (os.path.getsize(child) if os.path.isfile(child)
-                  else dir_size_bytes(child)) // 1024
-        except (PermissionError, OSError):
-            continue
-        if kb < min_kb:
-            continue
-        results.append({"name": name, "path": child, "size_kb": kb, "size_h": human(kb)})
+                  else dir_size_bytes(child, denied_paths)) // 1024
+        except OSError:
+            kb = 0
+            denied_paths.append(child)
+        if kb >= min_kb or denied_paths:
+            results.append(size_row(child, kb, denied_paths))
     results.sort(key=lambda r: r["size_kb"], reverse=True)
-    return results[:limit]
+    # Keep every warning even when a partial total falls below the top-N cutoff.
+    return results[:limit] + [row for row in results[limit:] if row.get("denied")]
 
 
 def list_drives_windows():
@@ -268,14 +280,10 @@ def scan_windows():
     for path in dev_paths:
         if not os.path.isdir(path):
             continue
-        try:
-            kb = dir_size_bytes(path) // 1024
-        except (PermissionError, OSError):
-            continue
-        if kb < 51200:
-            continue
-        dev.append({"name": os.path.basename(path.rstrip("\\/")) or path,
-                    "path": path, "size_kb": kb, "size_h": human(kb)})
+        denied_paths = []
+        kb = dir_size_bytes(path, denied_paths) // 1024
+        if kb >= 51200 or denied_paths:
+            dev.append(size_row(path, kb, denied_paths))
     dev.sort(key=lambda r: r["size_kb"], reverse=True)
     groups["dev_caches"] = dev
     return system_info_windows(), groups
