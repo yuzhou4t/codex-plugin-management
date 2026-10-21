@@ -129,6 +129,7 @@ def resolve_session(args: argparse.Namespace) -> Path:
 
 def load_records(path: Path) -> Iterable[dict[str, Any]]:
     snapshot = path.read_bytes()
+    archived = "archived_sessions" in path.parts or "archived_sessions" in path.resolve().parts
     lines = snapshot.splitlines()
     for index, raw_line in enumerate(lines):
         try:
@@ -136,8 +137,9 @@ def load_records(path: Path) -> Iterable[dict[str, Any]]:
         except (UnicodeDecodeError, json.JSONDecodeError):
             # The one immutable read can end inside the live writer's final
             # UTF-8 codepoint or JSON object. A malformed terminated/interior
-            # line is persistent corruption and must still surface.
-            if index == len(lines) - 1 and not snapshot.endswith((b"\n", b"\r")):
+            # line is persistent corruption and must still surface. Archived
+            # logs are immutable, so even an unterminated fragment is corrupt.
+            if not archived and index == len(lines) - 1 and not snapshot.endswith((b"\n", b"\r")):
                 return
             raise
 
@@ -447,7 +449,7 @@ def read_usage_events(info: SessionInfo) -> tuple[list[dict[str, Any]], list[dic
 
 
 def selected_infos(args: argparse.Namespace) -> list[SessionInfo]:
-    if args.session or args.latest:
+    if args.session or args.latest or (args.thread_id and not args.historical):
         path = resolve_session(args)
         infos = [session_info(path) or SessionInfo(path, task_id_from_name(path), "", "", "root", False, False)]
     else:
