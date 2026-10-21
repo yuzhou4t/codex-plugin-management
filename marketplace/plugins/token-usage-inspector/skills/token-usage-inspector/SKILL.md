@@ -42,6 +42,14 @@ On Windows, use `python` or `py -3` if `python3` is unavailable. CSV and JSON ex
 
 ## Query historical usage
 
+On Windows, install the IANA timezone database into the same Python environment used to run the script before using an explicit `--timezone`:
+
+```powershell
+python -m pip install -r scripts/requirements.txt
+```
+
+Run this setup command from this Skill's directory, or provide the full path to its `scripts/requirements.txt`. The dependency is `tzdata`; the default local timezone uses system local-time rules. Python documents this Windows requirement in its [zoneinfo data-source guidance](https://docs.python.org/3/library/zoneinfo.html#data-sources).
+
 List locally recorded project directories before choosing a scope:
 
 ```bash
@@ -61,6 +69,8 @@ python3 scripts/inspect_token_usage.py \
 `--to YYYY-MM-DD` includes that entire local calendar day. An ISO datetime passed to `--to` is an exclusive cutoff. Add `--include-subdirs` only when child working directories belong in the same project scope.
 
 Date, model, and grouping options can also be combined with `--session PATH` or explicit `--latest`; these reports aggregate only the selected rollout file. `--thread-id ID --historical` continues to aggregate every retained file belonging to that task.
+
+Always supply an explicit target when filtering or grouping usage. Use `--all-sessions` to opt into a global report; filter or grouping flags alone are rejected.
 
 Aggregate every locally retained task, or inspect one task across all of its rollout files:
 

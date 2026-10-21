@@ -109,6 +109,12 @@ python3 scripts/doctor.py
 
 marketplace 中的 `token-usage-inspector` 插件读取 Codex 本机现存及归档的 `rollout-*.jsonl`：新版日志使用原生 `token_usage_record`，旧版日志从累计 `token_count` 快照计算增量并排除子任务继承回放。它既能查看单个任务的轮次和调用，也能按项目、全部历史任务、日期、模型、任务和来源汇总，支持 CSV/JSON 导出与实时刷新；默认不显示提示词，也不会上传会话日志。
 
+Windows 上使用 `--timezone Asia/Shanghai` 等显式 IANA 时区前，需为运行脚本的同一 Python 环境安装时区数据；在仓库根目录执行：
+
+```powershell
+python -m pip install -r marketplace/plugins/token-usage-inspector/skills/token-usage-inspector/scripts/requirements.txt
+```
+
 ## 安全边界
 
 - 不提交 API Key、访问令牌、飞书目标 ID、账号配置或本机缓存。

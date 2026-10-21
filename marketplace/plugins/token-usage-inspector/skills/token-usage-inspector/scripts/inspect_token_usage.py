@@ -353,7 +353,11 @@ def timezone_from_name(name: str) -> timezone | ZoneInfo | None:
     try:
         return ZoneInfo(name)
     except ZoneInfoNotFoundError as exc:
-        raise ValueError(f"Unknown timezone: {name}") from exc
+        raise ValueError(
+            f"Unknown or unavailable timezone: {name}. If IANA timezone data is missing "
+            "(common on Windows), run 'python -m pip install tzdata' in the Python "
+            "environment used for this script; otherwise check the timezone name."
+        ) from exc
 
 
 def parse_timestamp(value: str) -> datetime | None:
@@ -770,6 +774,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def validate_args(args: argparse.Namespace) -> None:
+    if historical_mode(args) and not (args.list_sessions or args.list_projects) and not any(
+        (args.session, args.thread_id, args.latest, args.project, args.all_sessions)
+    ):
+        raise ValueError("Choose an explicit scope: --session, --thread-id, --latest, --project, or --all-sessions")
     if args.watch is not None and args.watch <= 0:
         raise ValueError("--watch must be greater than zero")
     if args.watch is not None and historical_mode(args):

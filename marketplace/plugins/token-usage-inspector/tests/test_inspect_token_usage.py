@@ -100,6 +100,35 @@ class HistoricalUsageTests(unittest.TestCase):
                     self.assertEqual(sum(row["total_tokens"] for row in rows), 40)
                     self.assertEqual(sum(row["tasks"] for row in rows), 1)
 
+    def test_historical_modifiers_require_an_explicit_scope(self):
+        self.write("sessions/rollout-unrelated.jsonl", [meta("unrelated", "/work"), native("2026-07-01T01:00:00Z", 90, "r")])
+        output = self.home / "report.json"
+        for modifier in (("--from", "2026-07-01"), ("--to", "2026-07-31"), ("--group-by", "model"), ("--model", "gpt"), ("--exclude-thread", "another-task")):
+            with self.subTest(modifier=modifier):
+                output.write_text("existing report", encoding="utf-8")
+                result = subprocess.run([
+                    sys.executable, str(SCRIPT), "--codex-home", str(self.home), *modifier,
+                    "--format", "json", "--output", str(output),
+                ], text=True, capture_output=True)
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("explicit scope", result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(output.read_text(encoding="utf-8"), "existing report")
+
+    def test_missing_timezone_database_reports_required_setup(self):
+        self.write("sessions/rollout-timezone.jsonl", [meta("task", "/work"), native("2026-07-01T01:00:00Z", 40, "r")])
+        # -S omits site packages and the empty search path omits system tzdb,
+        # reproducing a stock Windows runtime without changing system settings.
+        result = subprocess.run([
+            sys.executable, "-S", str(SCRIPT), "--codex-home", str(self.home), "--all-sessions",
+            "--timezone", "Asia/Shanghai", "--format", "json",
+        ], env={**os.environ, "PYTHONTZPATH": "", "PYTHONPATH": ""}, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Asia/Shanghai", result.stderr)
+        self.assertIn("pip install", result.stderr)
+        self.assertIn("tzdata", result.stderr)
+        self.assertEqual(result.stdout, "")
+
     def test_latest_historical_selector_respects_archive_policy(self):
         active = self.write("sessions/rollout-active.jsonl", [meta("active", "/work"), native("2026-07-01T01:00:00Z", 40, "active")])
         archived = self.write("archived_sessions/rollout-archived.jsonl", [meta("archived", "/work"), native("2026-07-01T01:00:00Z", 90, "archived")])
