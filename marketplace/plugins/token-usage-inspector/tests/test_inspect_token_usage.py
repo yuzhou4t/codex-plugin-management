@@ -100,6 +100,70 @@ class HistoricalUsageTests(unittest.TestCase):
                     self.assertEqual(sum(row["total_tokens"] for row in rows), 40)
                     self.assertEqual(sum(row["tasks"] for row in rows), 1)
 
+    def test_thread_modifiers_expand_to_all_files_only_with_historical(self):
+        thread = "target-thread"
+        active = self.write("sessions/rollout-current-target-thread.jsonl", [
+            meta(thread, "/work"), context("gpt"), native("2026-07-02T01:00:00Z", 40, "current"),
+        ])
+        archived = self.write("archived_sessions/rollout-old-target-thread.jsonl", [
+            meta(thread, "/work"), context("gpt"), native("2026-07-01T01:00:00Z", 900, "old"),
+        ])
+        os.utime(active, (200, 200))
+        os.utime(archived, (100, 100))
+        for modifier in (("--from", "2026-07-01"), ("--model", "gpt"), ("--group-by", "task")):
+            with self.subTest(modifier=modifier):
+                exact = self.run_json("--thread-id", thread, *modifier)
+                self.assertEqual(sum(row["total_tokens"] for row in exact), 40)
+                history = self.run_json("--thread-id", thread, "--historical", *modifier)
+                self.assertEqual(sum(row["total_tokens"] for row in history), 940)
+                active_history = self.run_json("--thread-id", thread, "--historical", "--active-only", *modifier)
+                self.assertEqual(sum(row["total_tokens"] for row in active_history), 40)
+
+    def test_unterminated_archive_corruption_fails_without_replacing_report(self):
+        for tail in (b'{"type":"event_msg"', b'{"text":"\xe4'):
+            with self.subTest(tail=tail):
+                archived = self.write("archived_sessions/rollout-archived-task.jsonl", [
+                    meta("archived-task", "/work"), native("2026-07-01T01:00:00Z", 40, "archived"),
+                ])
+                with archived.open("ab") as handle:
+                    handle.write(tail)
+                output = self.home / "report.json"
+                for selector in (("--all-sessions",), ("--project", "/work"), ("--thread-id", "archived-task", "--historical"), ("--session", str(archived))):
+                    with self.subTest(selector=selector):
+                        output.write_text("existing report", encoding="utf-8")
+                        result = subprocess.run([
+                            sys.executable, str(SCRIPT), "--codex-home", str(self.home), *selector,
+                            "--group-by", "task", "--format", "json", "--output", str(output),
+                        ], text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 2, result.stdout)
+                        self.assertIn(str(archived), result.stderr)
+                        self.assertEqual(result.stdout, "")
+                        self.assertEqual(output.read_text(encoding="utf-8"), "existing report")
+
+    def test_complete_archive_last_record_does_not_require_a_newline(self):
+        archived = self.write("archived_sessions/rollout-complete.jsonl", [
+            meta("complete", "/work"), native("2026-07-01T01:00:00Z", 40, "complete"),
+        ])
+        archived.write_bytes(archived.read_bytes().rstrip(b"\n"))
+        rows = self.run_json("--all-sessions", "--group-by", "task")
+        self.assertEqual([(row["task"], row["total_tokens"]) for row in rows], [("complete", 40)])
+
+    def test_active_symlink_to_truncated_archive_is_still_rejected(self):
+        archived = self.write("archived_sessions/rollout-archived.jsonl", [
+            meta("archived", "/work"), native("2026-07-01T01:00:00Z", 40, "archived"),
+        ])
+        with archived.open("ab") as handle:
+            handle.write(b'{"type":"event_msg"')
+        active_alias = self.home / "sessions/rollout-alias.jsonl"
+        active_alias.parent.mkdir()
+        active_alias.symlink_to(archived)
+        result = subprocess.run([
+            sys.executable, str(SCRIPT), "--codex-home", str(self.home), "--all-sessions", "--active-only", "--format", "json",
+        ], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn(str(active_alias), result.stderr)
+        self.assertEqual(result.stdout, "")
+
     def test_historical_modifiers_require_an_explicit_scope(self):
         self.write("sessions/rollout-unrelated.jsonl", [meta("unrelated", "/work"), native("2026-07-01T01:00:00Z", 90, "r")])
         output = self.home / "report.json"
