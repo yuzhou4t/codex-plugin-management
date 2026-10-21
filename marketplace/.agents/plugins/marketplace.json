@@ -51,6 +51,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Creativity"
+    },
+    {
+      "name": "token-usage-inspector",
+      "source": {
+        "source": "local",
+        "path": "./plugins/token-usage-inspector"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
     }
   ]
 }

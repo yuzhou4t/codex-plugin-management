@@ -1,6 +1,6 @@
 interface:
-  display_name: "Git Finish"
-  short_description: "Automatically commit verified task-owned changes"
-  default_prompt: "Use $git-finish to inspect, verify, and safely commit the completed main task."
+  display_name: "Git 初始化与阶段保存"
+  short_description: "主动检查项目 Git，必要时建仓，并在阶段完成和交付前本地提交"
+  default_prompt: "使用 $git-finish 检查项目 Git，必要时初始化并建立基线，在阶段完成和最终交付前安全保存本地提交。"
 policy:
   allow_implicit_invocation: true

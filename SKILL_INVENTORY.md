@@ -1,6 +1,6 @@
 # Skill 清单
 
-核对日期：2026-10-18。当前仓库管理或明确排除 37 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-10-21。当前仓库管理或明确排除 37 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
 ## 跨平台自动安装（25）
 
@@ -8,10 +8,9 @@
 | --- | --- |
 | `ai-paper-scout` | 自维护；AI 论文检索与初筛 |
 | `aihot` | 本地衍生版；当前 AI HOT 资讯查询 |
-| `apply-personal-app-design-system` | 自维护；TTS、AI Recording 与后续个人软件的白蓝设计系统 |
-| `demo-release-checklist` | 自维护；演示、答辩、公开发布前检查清单 |
+| `demo-release-checklist` | 自维护；演示、路演、答辩及发布前的证据、凭据和公网验证 |
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
-| `git-finish` | 自维护；Git 任务收尾 |
+| `git-finish` | 自维护；Git 初始化、阶段保存与最终收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
 | `gsap-core` | GSAP 官方快照 |
 | `gsap-frameworks` | GSAP 官方快照 |
@@ -25,12 +24,13 @@
 | `ima-skill` | 已安装的 IMA OpenAPI Skill 快照 |
 | `ltci-public-data-engineering` | 自维护；长护险公共数据工程 |
 | `paper-terminology-translation-explanation` | 自维护；论文术语翻译与解释 |
+| `personal-frontend-builder` | 自维护；个人前端构建与前端开发提示词整理，Codex / AntiGravity 共用 |
 | `project-docs-sync` | 自维护；项目文档同步与交接 |
 | `project-orientation` | 自维护；打开、理解和安全启动项目 |
 | `stabilize-local-agent-project` | 自维护；阻止无界扫描、Git/worktree 失控和磁盘留存膨胀 |
 | `storage-analyzer` | Khazix 上游快照；macOS / Windows 存储分析 |
 | `sync-skill-to-github` | 自维护；安全审查并将新建或下载的 Skill 同步到 GitHub |
-| `ui-direction-alignment` | 自维护；改版前界面方向对齐与测量验收 |
+| `ui-direction-alignment` | 自维护；大幅改版的界面方向对齐、测量与真实页面验收 |
 
 ## 仅由 macOS 自动安装（9）
 
@@ -60,5 +60,5 @@
 
 - macOS：安装 `skills/` 与 `skills-macos/`，共 34 个 Skill。
 - Windows：只安装 `skills/`，共 25 个 Skill。
-- 两个平台都会安装 `marketplace/` 中固定的 4 个插件。
+- 两个平台都会安装 `marketplace/` 中固定的 5 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill 或插件。

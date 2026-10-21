@@ -1,0 +1,2 @@
+# Windows does not supply the IANA database needed by zoneinfo.
+tzdata; sys_platform == "win32"
