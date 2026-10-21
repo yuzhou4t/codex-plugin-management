@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import ntpath
 import posixpath
@@ -9,6 +10,7 @@ import sys
 import argparse
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 from pathlib import Path
 
@@ -121,6 +123,39 @@ class InspectTokenUsageTests(unittest.TestCase):
             with self.subTest(requested=requested, recorded=recorded), patch.object(MODULE.os, "path", path_module):
                 self.assertEqual(MODULE.project_matches(recorded, requested, True), expected)
                 self.assertFalse(MODULE.project_matches(recorded, requested, False))
+
+    def test_unreadable_selected_rollout_fails_during_metadata_or_usage_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sessions = root / "sessions"
+            sessions.mkdir()
+            rollout = sessions / "rollout-denied.jsonl"
+            rollout.write_text(json.dumps({"type": "session_meta", "payload": {"id": "denied", "cwd": "/work"}}) + "\n", encoding="utf-8")
+            original_read = Path.read_bytes
+            for fail_on_read in (1, 2):
+                with self.subTest(fail_on_read=fail_on_read):
+                    reads = 0
+
+                    def fail_read(path):
+                        nonlocal reads
+                        if path == rollout:
+                            reads += 1
+                            if reads == fail_on_read:
+                                raise PermissionError("synthetic read denial")
+                        return original_read(path)
+
+                    output = root / "report.json"
+                    output.write_text("existing report", encoding="utf-8")
+                    stderr, stdout = io.StringIO(), io.StringIO()
+                    with patch.object(MODULE.sys, "argv", [
+                        "inspect_token_usage.py", "--codex-home", str(root), "--all-sessions", "--format", "json", "--output", str(output),
+                    ]), patch.object(Path, "read_bytes", fail_read), redirect_stderr(stderr), redirect_stdout(stdout):
+                        result = MODULE.main()
+                    self.assertEqual(result, 2)
+                    self.assertIn(str(rollout), stderr.getvalue())
+                    self.assertIn("synthetic read denial", stderr.getvalue())
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertEqual(output.read_text(encoding="utf-8"), "existing report")
 
     def test_current_event_schema_groups_calls_under_task_started_turns(self) -> None:
         records = [

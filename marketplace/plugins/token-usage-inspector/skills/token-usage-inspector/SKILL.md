@@ -60,6 +60,8 @@ python3 scripts/inspect_token_usage.py \
 
 `--to YYYY-MM-DD` includes that entire local calendar day. An ISO datetime passed to `--to` is an exclusive cutoff. Add `--include-subdirs` only when child working directories belong in the same project scope.
 
+Date, model, and grouping options can also be combined with `--session PATH` or explicit `--latest`; these reports aggregate only the selected rollout file. `--thread-id ID --historical` continues to aggregate every retained file belonging to that task.
+
 Aggregate every locally retained task, or inspect one task across all of its rollout files:
 
 ```bash
@@ -78,6 +80,7 @@ Valid grouping fields are `month`, `day`, `model`, `project`, `task`, and `sourc
 - A user turn can contain many model calls after tool results. Its cumulative total can exceed the per-call context window.
 - Mark the active turn as provisional. Its counters continue to grow until the final answer is recorded.
 - Historical coverage is limited to rollout logs still present locally. Report the selected path, date cutoff, timezone, archive policy, and any excluded task IDs with the result.
+- Unreadable or malformed selected logs fail with the affected path and exit status 2; an existing output file is kept. An unfinished final record in a live log remains retryable. Fix the reported input or explicitly narrow the selection before retrying.
 - New native call records and old cumulative snapshots are selected per rollout file. Do not add both sources from the same file.
 - Repeated cumulative snapshots do not represent new calls. Native historical records with a response ID are deduplicated by task and response ID, even when replay timestamps differ.
 - Spawned-agent snapshots recorded before `inter_agent_communication_metadata` are inherited parent context and are used only as a baseline, not counted as child usage.

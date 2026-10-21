@@ -65,24 +65,27 @@ def session_files(root: Path, include_archived: bool = True) -> list[Path]:
 
 
 def session_info(path: Path) -> SessionInfo | None:
-    for record in load_records(path):
-        if record.get("type") != "session_meta":
-            continue
-        payload = record.get("payload", {})
-        source_value = payload.get("source")
-        source_text = json.dumps(source_value, ensure_ascii=False) if isinstance(source_value, (dict, list)) else str(source_value or "")
-        spawned = is_spawned_source(source_value)
-        guardian = "guardian" in source_text.lower()
-        source = "spawned" if spawned else "guardian" if guardian else "root"
-        return SessionInfo(
-            path=path,
-            task_id=str(payload.get("id") or task_id_from_name(path)),
-            started=str(payload.get("timestamp") or record.get("timestamp") or ""),
-            project=str(payload.get("cwd") or ""),
-            source=source,
-            spawned=spawned,
-            guardian=guardian,
-        )
+    try:
+        for record in load_records(path):
+            if record.get("type") != "session_meta":
+                continue
+            payload = record.get("payload", {})
+            source_value = payload.get("source")
+            source_text = json.dumps(source_value, ensure_ascii=False) if isinstance(source_value, (dict, list)) else str(source_value or "")
+            spawned = is_spawned_source(source_value)
+            guardian = "guardian" in source_text.lower()
+            source = "spawned" if spawned else "guardian" if guardian else "root"
+            return SessionInfo(
+                path=path,
+                task_id=str(payload.get("id") or task_id_from_name(path)),
+                started=str(payload.get("timestamp") or record.get("timestamp") or ""),
+                project=str(payload.get("cwd") or ""),
+                source=source,
+                spawned=spawned,
+                guardian=guardian,
+            )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot read rollout metadata from {path}: {exc}") from exc
     return None
 
 
@@ -99,10 +102,7 @@ def task_id_from_name(path: Path) -> str:
 def all_session_info(root: Path, include_archived: bool = True) -> list[SessionInfo]:
     result = []
     for path in session_files(root, include_archived=include_archived):
-        try:
-            info = session_info(path)
-        except (OSError, json.JSONDecodeError):
-            continue
+        info = session_info(path)
         if info:
             result.append(info)
     return result
@@ -443,7 +443,11 @@ def read_usage_events(info: SessionInfo) -> tuple[list[dict[str, Any]], list[dic
 
 
 def selected_infos(args: argparse.Namespace) -> list[SessionInfo]:
-    infos = all_session_info(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False))
+    if args.session or args.latest:
+        path = resolve_session(args)
+        infos = [session_info(path) or SessionInfo(path, task_id_from_name(path), "", "", "root", False, False)]
+    else:
+        infos = all_session_info(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False))
     excluded = set(normalize_repeat(args.exclude_thread))
     return [
         info
@@ -463,8 +467,8 @@ def collect_historical_events(args: argparse.Namespace, infos: list[SessionInfo]
     for info in sorted(infos, key=lambda item: str(item.path)):
         try:
             native, legacy = read_usage_events(info)
-        except (OSError, json.JSONDecodeError):
-            continue
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Cannot read rollout usage from {info.path}: {exc}") from exc
         if native:
             for event in native:
                 identity = (info.task_id, event["response_id"]) if event["response_id"] else (

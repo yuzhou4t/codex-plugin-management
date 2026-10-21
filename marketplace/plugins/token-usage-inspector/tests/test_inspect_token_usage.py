@@ -84,6 +84,96 @@ class HistoricalUsageTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
 
+    def test_exact_selectors_keep_historical_modifiers_within_one_rollout(self):
+        selected = self.write("sessions/rollout-selected.jsonl", [
+            meta("selected", "/work/project"), context("gpt"), native("2026-07-01T01:00:00Z", 40, "selected"),
+        ])
+        unrelated = self.write("archived_sessions/rollout-unrelated.jsonl", [
+            meta("unrelated", "/work/project"), context("gpt"), native("2026-07-01T01:00:00Z", 900, "unrelated"),
+        ])
+        os.utime(selected, (200, 200))
+        os.utime(unrelated, (100, 100))
+        for selector in (("--session", str(selected)), ("--latest",)):
+            for modifier in (("--from", "2026-07-01"), ("--model", "gpt"), ("--group-by", "task")):
+                with self.subTest(selector=selector, modifier=modifier):
+                    rows = self.run_json(*selector, *modifier)
+                    self.assertEqual(sum(row["total_tokens"] for row in rows), 40)
+                    self.assertEqual(sum(row["tasks"] for row in rows), 1)
+
+    def test_latest_historical_selector_respects_archive_policy(self):
+        active = self.write("sessions/rollout-active.jsonl", [meta("active", "/work"), native("2026-07-01T01:00:00Z", 40, "active")])
+        archived = self.write("archived_sessions/rollout-archived.jsonl", [meta("archived", "/work"), native("2026-07-01T01:00:00Z", 90, "archived")])
+        os.utime(active, (100, 100))
+        os.utime(archived, (200, 200))
+        for flags, expected_task in (((), "archived"), (("--active-only",), "active")):
+            with self.subTest(flags=flags):
+                rows = self.run_json("--latest", "--group-by", "task", *flags)
+                self.assertEqual([row["task"] for row in rows], [expected_task])
+
+    def test_explicit_external_rollout_without_metadata_can_be_aggregated(self):
+        selected = self.write("external.jsonl", [context("gpt"), native("2026-07-01T01:00:00Z", 40, "external")])
+        rows = self.run_json("--session", str(selected), "--model", "gpt", "--group-by", "task")
+        self.assertEqual([(row["task"], row["total_tokens"]) for row in rows], [("external", 40)])
+        original = selected.read_bytes()
+        result = subprocess.run([
+            sys.executable, str(SCRIPT), "--codex-home", str(self.home), "--session", str(selected),
+            "--group-by", "task", "--output", str(selected),
+        ], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("alias", result.stderr)
+        self.assertEqual(selected.read_bytes(), original)
+
+    def test_missing_explicit_rollout_does_not_fall_back_to_other_tasks(self):
+        self.write("sessions/rollout-unrelated.jsonl", [meta("unrelated", "/work"), native("2026-07-01T01:00:00Z", 90, "r")])
+        missing = self.home / "missing.jsonl"
+        result = subprocess.run([
+            sys.executable, str(SCRIPT), "--codex-home", str(self.home), "--session", str(missing), "--group-by", "task",
+        ], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn(str(missing), result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_corrupt_selected_rollout_fails_without_publishing_partial_totals(self):
+        corrupt = self.write("sessions/rollout-corrupt.jsonl", [
+            meta("corrupt", "/work"), native("2026-07-01T01:00:00Z", 40, "corrupt"),
+        ])
+        with corrupt.open("ab") as handle:
+            handle.write(b'not-json\n')
+        valid = self.write("archived_sessions/rollout-valid.jsonl", [meta("valid", "/work"), native("2026-07-01T01:00:00Z", 90, "valid")])
+        os.utime(valid, (100, 100))
+        os.utime(corrupt, (200, 200))
+        selectors = (("--all-sessions",), ("--project", "/work"), ("--thread-id", "corrupt", "--historical"), ("--session", str(corrupt)), ("--latest",))
+        for selector in selectors:
+            for output_format in ("json", "csv", "table"):
+                with self.subTest(selector=selector, format=output_format):
+                    output = self.home / f"report.{output_format}"
+                    output.write_text("existing report", encoding="utf-8")
+                    result = subprocess.run([
+                        sys.executable, str(SCRIPT), "--codex-home", str(self.home), *selector, "--group-by", "task",
+                        "--format", output_format, "--output", str(output),
+                    ], text=True, capture_output=True)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn(str(corrupt), result.stderr)
+                    self.assertEqual(result.stdout, "")
+                    self.assertEqual(output.read_text(encoding="utf-8"), "existing report")
+
+    def test_corrupt_metadata_is_reported_instead_of_silently_excluded(self):
+        corrupt = self.write("sessions/rollout-corrupt-metadata.jsonl", [])
+        corrupt.write_bytes(b'not-json\n')
+        result = subprocess.run([
+            sys.executable, str(SCRIPT), "--codex-home", str(self.home), "--all-sessions", "--format", "json",
+        ], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn(str(corrupt), result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_historical_reader_still_accepts_a_live_unterminated_tail(self):
+        rollout = self.write("sessions/rollout-live.jsonl", [meta("live", "/work"), native("2026-07-01T01:00:00Z", 40, "live")])
+        with rollout.open("ab") as handle:
+            handle.write(b'{"type":"event_msg"')
+        rows = self.run_json("--all-sessions", "--group-by", "task")
+        self.assertEqual([(row["task"], row["total_tokens"]) for row in rows], [("live", 40)])
+
     def test_historical_output_rejects_every_selected_rollout_alias(self):
         for selector in (("--all-sessions",), ("--project", "/work/project"), ("--thread-id", "archive-task", "--historical")):
             for alias in ("same", "symlink", "hardlink"):
