@@ -1,6 +1,6 @@
 # Skill 清单
 
-核对日期：2026-10-18。当前仓库管理或明确排除 37 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-10-21。当前仓库管理或明确排除 37 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
 ## 跨平台自动安装（25）
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | `ai-paper-scout` | 自维护；AI 论文检索与初筛 |
 | `aihot` | 本地衍生版；当前 AI HOT 资讯查询 |
-| `demo-release-checklist` | 自维护；演示与发布前的证据、凭据和公网验证 |
+| `demo-release-checklist` | 自维护；演示、路演、答辩及发布前的证据、凭据和公网验证 |
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
 | `git-finish` | 自维护；Git 初始化、阶段保存与最终收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
@@ -30,7 +30,7 @@
 | `stabilize-local-agent-project` | 自维护；阻止无界扫描、Git/worktree 失控和磁盘留存膨胀 |
 | `storage-analyzer` | Khazix 上游快照；macOS / Windows 存储分析 |
 | `sync-skill-to-github` | 自维护；安全审查并将新建或下载的 Skill 同步到 GitHub |
-| `ui-direction-alignment` | 自维护；大幅改版的方向对齐与真实页面验收 |
+| `ui-direction-alignment` | 自维护；大幅改版的界面方向对齐、测量与真实页面验收 |
 
 ## 仅由 macOS 自动安装（9）
 
