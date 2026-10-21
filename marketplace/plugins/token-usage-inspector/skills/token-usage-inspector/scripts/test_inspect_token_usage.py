@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import ntpath
+import posixpath
 import sys
 import argparse
 import tempfile
@@ -27,6 +29,98 @@ class InspectTokenUsageTests(unittest.TestCase):
         path = directory / "rollout-test.jsonl"
         path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
         return path
+
+    def token_count(self, total: int, last: int) -> dict:
+        return {"type": "event_msg", "payload": {"type": "token_count", "info": {
+            "total_token_usage": {"input_tokens": total, "total_tokens": total},
+            "last_token_usage": {"input_tokens": last, "total_tokens": last},
+        }}}
+
+    def test_mixed_usage_sources_count_each_native_call_once(self) -> None:
+        for native_first in (False, True):
+            with self.subTest(native_first=native_first):
+                records = [{"type": "event_msg", "payload": {"type": "task_started", "turn_id": "mixed"}}]
+                for total, last in ((10, 10), (30, 20)):
+                    pair = [self.token_count(total, last), {
+                        "type": "token_usage_record", "payload": {
+                            "turn_id": "mixed", "response_id": f"response-{total}",
+                            "usage": {"input_tokens": last, "total_tokens": last},
+                            "turn_token_usage": {"input_tokens": total, "total_tokens": total},
+                        },
+                    }]
+                    records.extend(reversed(pair) if native_first else pair)
+                turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+                self.assertEqual([row["total_tokens"] for row in calls], [10, 20])
+                self.assertEqual([row["call"] for row in calls], [1, 2])
+                self.assertEqual(turns[0]["total_tokens"], 30)
+
+    def test_unchanged_snapshots_do_not_repeat_last_call(self) -> None:
+        records = [
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "first"}},
+            self.token_count(0, 0),
+            self.token_count(10, 10), self.token_count(10, 10),
+            {"type": "event_msg", "payload": {"type": "task_complete", "turn_id": "first"}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "second"}},
+            self.token_count(10, 10), self.token_count(30, 20), self.token_count(30, 20),
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual([(row["turn_id"], row["call"], row["total_tokens"]) for row in calls], [
+            ("first", 1, 10), ("second", 1, 20),
+        ])
+        self.assertEqual([row["total_tokens"] for row in turns], [10, 20])
+
+    def test_native_source_without_turn_snapshots_still_produces_turn_totals(self) -> None:
+        records = [{"type": "event_msg", "payload": {"type": "task_started", "turn_id": "mixed"}}]
+        for total, last in ((10, 10), (30, 20)):
+            records.extend([self.token_count(total, last), {
+                "type": "token_usage_record", "payload": {
+                    "turn_id": "mixed", "usage": {"input_tokens": last, "total_tokens": last},
+                },
+            }])
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual(turns[0]["total_tokens"], 30)
+        self.assertEqual(sum(row["total_tokens"] for row in calls), 30)
+
+    def test_spawned_exact_view_excludes_inherited_turns_and_counters(self) -> None:
+        records = [
+            {"type": "session_meta", "payload": {"id": "child", "source": {"subagent": {"thread_spawn": {"parent": "parent"}}}}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "inherited"}},
+            self.token_count(100, 100),
+            {"type": "inter_agent_communication_metadata", "payload": {}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "child-turn"}},
+            self.token_count(100, 100), self.token_count(125, 25), self.token_count(150, 25),
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual([(row["turn_id"], row["total_tokens"]) for row in turns], [("child-turn", 50)])
+        self.assertEqual([row["total_tokens"] for row in calls], [25, 25])
+
+    def test_spawned_inherited_native_records_do_not_select_native_source(self) -> None:
+        records = [
+            {"type": "session_meta", "payload": {"source": {"subagent": {"thread_spawn": {}}}}},
+            {"type": "token_usage_record", "payload": {"turn_id": "parent", "usage": {"total_tokens": 100}, "turn_token_usage": {"total_tokens": 100}}},
+            self.token_count(100, 100),
+            {"type": "inter_agent_communication_metadata", "payload": {}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "child"}},
+            self.token_count(125, 25),
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual([(row["turn_id"], row["total_tokens"]) for row in turns], [("child", 25)])
+        self.assertEqual([row["total_tokens"] for row in calls], [25])
+
+    def test_recursive_project_matching_respects_roots_and_path_boundaries(self) -> None:
+        cases = [
+            (posixpath, "/", "/work/project", True),
+            (posixpath, "/work/project", "/work/project/child", True),
+            (posixpath, "/work/project", "/work/project-other", False),
+            (ntpath, "C:\\", "C:\\work\\project", True),
+            (ntpath, "C:\\", "D:\\work\\project", False),
+            (ntpath, "C:\\work", "C:\\work-other", False),
+            (ntpath, "\\\\server\\share\\", "\\\\server\\share\\project", True),
+        ]
+        for path_module, requested, recorded, expected in cases:
+            with self.subTest(requested=requested, recorded=recorded), patch.object(MODULE.os, "path", path_module):
+                self.assertEqual(MODULE.project_matches(recorded, requested, True), expected)
+                self.assertFalse(MODULE.project_matches(recorded, requested, False))
 
     def test_current_event_schema_groups_calls_under_task_started_turns(self) -> None:
         records = [

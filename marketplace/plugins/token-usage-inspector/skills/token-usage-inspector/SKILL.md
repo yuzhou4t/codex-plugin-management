@@ -79,6 +79,7 @@ Valid grouping fields are `month`, `day`, `model`, `project`, `task`, and `sourc
 - Mark the active turn as provisional. Its counters continue to grow until the final answer is recorded.
 - Historical coverage is limited to rollout logs still present locally. Report the selected path, date cutoff, timezone, archive policy, and any excluded task IDs with the result.
 - New native call records and old cumulative snapshots are selected per rollout file. Do not add both sources from the same file.
+- Repeated cumulative snapshots do not represent new calls. Native historical records with a response ID are deduplicated by task and response ID, even when replay timestamps differ.
 - Spawned-agent snapshots recorded before `inter_agent_communication_metadata` are inherited parent context and are used only as a baseline, not counted as child usage.
 - Token counters describe model processing, not necessarily invoice cost or account rate-limit consumption. Do not infer price without the applicable current billing contract.
 

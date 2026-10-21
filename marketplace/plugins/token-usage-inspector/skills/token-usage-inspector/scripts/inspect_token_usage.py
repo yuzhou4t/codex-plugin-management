@@ -71,8 +71,7 @@ def session_info(path: Path) -> SessionInfo | None:
         payload = record.get("payload", {})
         source_value = payload.get("source")
         source_text = json.dumps(source_value, ensure_ascii=False) if isinstance(source_value, (dict, list)) else str(source_value or "")
-        subagent = source_value.get("subagent", {}) if isinstance(source_value, dict) else {}
-        spawned = isinstance(subagent, dict) and "thread_spawn" in subagent
+        spawned = is_spawned_source(source_value)
         guardian = "guardian" in source_text.lower()
         source = "spawned" if spawned else "guardian" if guardian else "root"
         return SessionInfo(
@@ -85,6 +84,11 @@ def session_info(path: Path) -> SessionInfo | None:
             guardian=guardian,
         )
     return None
+
+
+def is_spawned_source(source: Any) -> bool:
+    subagent = source.get("subagent") if isinstance(source, dict) else None
+    return isinstance(subagent, dict) and "thread_spawn" in subagent
 
 
 def task_id_from_name(path: Path) -> str:
@@ -190,7 +194,32 @@ def usage_delta(total: dict[str, Any], baseline: dict[str, int]) -> dict[str, in
 
 
 def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Read both per-call records and task-started native event counters."""
+    """Prefer native calls per rollout, excluding spawned-agent inherited replay."""
+    records = list(load_records(path))
+    spawned = any(
+        record.get("type") == "session_meta" and is_spawned_source(record.get("payload", {}).get("source"))
+        for record in records
+    )
+    child_active = not spawned
+    active_records = []
+    previous_total_usage = base_usage({})
+    for record in records:
+        payload = record.get("payload", {})
+        if record.get("type") == "inter_agent_communication_metadata":
+            child_active = True
+        if not child_active:
+            if record.get("type") == "event_msg" and payload.get("type") == "token_count":
+                info = payload.get("info")
+                if isinstance(info, dict) and isinstance(info.get("total_token_usage"), dict):
+                    previous_total_usage = base_usage(info["total_token_usage"])
+            continue
+        active_records.append(record)
+    use_native = any(
+        record.get("type") == "token_usage_record"
+        and record.get("payload", {}).get("turn_id")
+        and isinstance(record.get("payload", {}).get("usage"), dict)
+        for record in active_records
+    )
     prompts: dict[str, list[str]] = defaultdict(list)
     terminal_status: dict[str, str] = {}
     pending_prompts: list[str] = []
@@ -199,10 +228,9 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
     turn_order: list[str] = []
     latest_by_turn: dict[str, dict[str, Any]] = {}
     active_turn_id: str | None = None
-    previous_total_usage: dict[str, int] = {}
     baseline_by_turn: dict[str, dict[str, int]] = {}
 
-    for record in load_records(path):
+    for record in active_records:
         payload = record.get("payload", {})
         if record.get("type") == "event_msg":
             event_type = payload.get("type")
@@ -229,13 +257,18 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
                     terminal_status[terminal_turn_id] = "complete" if event_type == "task_complete" else "aborted"
                 if active_turn_id == terminal_turn_id:
                     active_turn_id = None
-            elif event_type == "token_count" and active_turn_id:
+            elif event_type == "token_count" and active_turn_id and not use_native:
                 info = payload.get("info")
                 if not isinstance(info, dict):
                     continue
                 last_usage = info.get("last_token_usage")
                 total_usage = info.get("total_token_usage")
                 if not isinstance(last_usage, dict) or not isinstance(total_usage, dict):
+                    continue
+                current = base_usage(total_usage)
+                # Rate-limit updates can repeat the preceding last_token_usage.
+                # Only an advancing cumulative snapshot represents another call.
+                if current == previous_total_usage:
                     continue
                 if active_turn_id not in latest_by_turn:
                     turn_order.append(active_turn_id)
@@ -253,7 +286,7 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
                     "timestamp_utc": record.get("timestamp", ""),
                     **usage_fields(usage_delta(total_usage, baseline_by_turn.get(active_turn_id, {}))),
                 }
-                previous_total_usage = {key: int(total_usage.get(key, 0) or 0) for key in USAGE_FIELDS}
+                previous_total_usage = current
                 continue
         if record.get("type") == "response_item" and payload.get("type") == "message":
             metadata = payload.get("internal_chat_message_metadata_passthrough", {})
@@ -267,10 +300,10 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
             elif turn_id and payload.get("role") == "assistant" and payload.get("phase") in FINAL_PHASES:
                 terminal_status[str(turn_id)] = "complete"
 
-        if record.get("type") != "token_usage_record":
+        if record.get("type") != "token_usage_record" or not use_native:
             continue
         turn_id = payload.get("turn_id")
-        if not turn_id:
+        if not turn_id or not isinstance(payload.get("usage"), dict):
             continue
         if turn_id not in latest_by_turn:
             turn_order.append(turn_id)
@@ -284,9 +317,14 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
                 **usage_fields(payload.get("usage")),
             }
         )
+        turn_usage = payload.get("turn_token_usage")
+        if not isinstance(turn_usage, dict):
+            prior = latest_by_turn.get(turn_id, {})
+            current = base_usage(payload["usage"])
+            turn_usage = {field: prior.get(field, 0) + current[field] for field in USAGE_FIELDS}
         latest_by_turn[turn_id] = {
             "timestamp_utc": record.get("timestamp", ""),
-            **usage_fields(payload.get("turn_token_usage")),
+            **usage_fields(turn_usage),
         }
 
     turn_rows = []
@@ -307,9 +345,11 @@ def parse_usage(path: Path, include_prompt: bool) -> tuple[list[dict[str, Any]],
     return turn_rows, call_rows
 
 
-def timezone_from_name(name: str) -> timezone | ZoneInfo:
+def timezone_from_name(name: str) -> timezone | ZoneInfo | None:
     if name == "local":
-        return datetime.now().astimezone().tzinfo or timezone.utc
+        # astimezone(None) asks the OS for the offset at the timestamp being
+        # converted, preserving historical DST rules on POSIX and Windows.
+        return None
     try:
         return ZoneInfo(name)
     except ZoneInfoNotFoundError as exc:
@@ -328,18 +368,22 @@ def parse_timestamp(value: str) -> datetime | None:
     return parsed
 
 
-def parse_boundary(value: str | None, zone: timezone | ZoneInfo, *, end: bool) -> datetime | None:
+def parse_boundary(value: str | None, zone: timezone | ZoneInfo | None, *, end: bool) -> datetime | None:
     if not value:
         return None
     try:
         if len(value) == 10:
             parsed_date = date.fromisoformat(value)
-            boundary = datetime.combine(parsed_date, datetime_time.min, tzinfo=zone)
-            return boundary + timedelta(days=1) if end else boundary
+            boundary = datetime.combine(parsed_date, datetime_time.min)
+            if end:
+                boundary += timedelta(days=1)
+            return boundary.replace(tzinfo=zone) if zone is not None else boundary.astimezone()
         boundary = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
         raise ValueError(f"Invalid {'--to' if end else '--from'} value: {value}") from exc
-    return boundary.replace(tzinfo=zone) if boundary.tzinfo is None else boundary.astimezone(zone)
+    if boundary.tzinfo is None and zone is not None:
+        return boundary.replace(tzinfo=zone)
+    return boundary.astimezone(zone)
 
 
 def project_matches(recorded: str, requested: str | None, include_subdirs: bool) -> bool:
@@ -347,7 +391,7 @@ def project_matches(recorded: str, requested: str | None, include_subdirs: bool)
         return True
     requested = os.path.normpath(os.path.expanduser(requested))
     recorded = os.path.normpath(recorded) if recorded else ""
-    return recorded == requested or (include_subdirs and recorded.startswith(requested + os.sep))
+    return recorded == requested or (include_subdirs and recorded.startswith(os.path.join(requested, "")))
 
 
 def normalize_repeat(values: list[str] | None) -> list[str]:
@@ -410,8 +454,9 @@ def selected_infos(args: argparse.Namespace) -> list[SessionInfo]:
     ]
 
 
-def collect_historical_events(args: argparse.Namespace) -> list[dict[str, Any]]:
-    infos = selected_infos(args)
+def collect_historical_events(args: argparse.Namespace, infos: list[SessionInfo] | None = None) -> list[dict[str, Any]]:
+    if infos is None:
+        infos = selected_infos(args)
     result: list[dict[str, Any]] = []
     seen_native: set[tuple[Any, ...]] = set()
     seen_legacy: set[tuple[Any, ...]] = set()
@@ -422,8 +467,9 @@ def collect_historical_events(args: argparse.Namespace) -> list[dict[str, Any]]:
             continue
         if native:
             for event in native:
-                identity = (
-                    event["response_id"] or None,
+                identity = (info.task_id, event["response_id"]) if event["response_id"] else (
+                    info.task_id,
+                    None,
                     event["timestamp"],
                     event["turn_id"],
                     event["model"],
@@ -472,7 +518,7 @@ def make_event(info: SessionInfo, timestamp: str, model: str, record_source: str
     }
 
 
-def aggregate_usage(args: argparse.Namespace) -> list[dict[str, Any]]:
+def aggregate_usage(args: argparse.Namespace, infos: list[SessionInfo] | None = None) -> list[dict[str, Any]]:
     zone = timezone_from_name(args.timezone)
     start = parse_boundary(args.from_time, zone, end=False)
     end = parse_boundary(args.to_time, zone, end=True)
@@ -488,7 +534,7 @@ def aggregate_usage(args: argparse.Namespace) -> list[dict[str, Any]]:
     seen_tasks: dict[tuple[str, ...], set[str]] = defaultdict(set)
     seen_files: dict[tuple[str, ...], set[str]] = defaultdict(set)
     seen_sources: dict[tuple[str, ...], set[str]] = defaultdict(set)
-    for event in collect_historical_events(args):
+    for event in collect_historical_events(args, infos):
         stamp = parse_timestamp(event["timestamp"])
         if stamp is None:
             continue
@@ -615,7 +661,9 @@ def list_projects(args: argparse.Namespace) -> None:
     projects: dict[str, dict[str, Any]] = {}
     tasks: dict[str, set[str]] = defaultdict(set)
     files: dict[str, int] = defaultdict(int)
-    for info in all_session_info(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False)):
+    infos = all_session_info(codex_home(args.codex_home), include_archived=not getattr(args, "active_only", False))
+    reject_rollout_output(args, (info.path for info in infos))
+    for info in infos:
         project = info.project or "(unknown)"
         projects.setdefault(project, {"project": project, "first_seen": info.started, "last_seen": info.started})
         projects[project]["first_seen"] = min(projects[project]["first_seen"], info.started)
@@ -625,7 +673,7 @@ def list_projects(args: argparse.Namespace) -> None:
     rows = []
     for project in sorted(projects):
         rows.append({**projects[project], "tasks": len(tasks[project]), "files": files[project]})
-    print(serialize(rows[: args.limit], args.format))
+    write_output(args, serialize(rows[: args.limit], args.format))
 
 
 def write_output(args: argparse.Namespace, rendered: str, heading: str | None = None) -> None:
@@ -682,6 +730,11 @@ def paths_alias(left: Path, right: Path) -> bool:
         return False
 
 
+def reject_rollout_output(args: argparse.Namespace, sources: Iterable[Path]) -> None:
+    if args.output and any(paths_alias(Path(args.output).expanduser(), source) for source in sources):
+        raise ValueError("--output must not alias a native Codex rollout log")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     target = parser.add_mutually_exclusive_group()
@@ -736,7 +789,9 @@ def main() -> int:
             list_projects(args)
             return 0
         if historical_mode(args):
-            rows = aggregate_usage(args)
+            infos = selected_infos(args)
+            reject_rollout_output(args, (info.path for info in infos))
+            rows = aggregate_usage(args, infos)
             write_output(args, serialize(rows, args.format))
             return 0
         path = resolve_session(args)
