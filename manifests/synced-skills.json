@@ -11,6 +11,15 @@
       "origin": "self"
     },
     {
+      "name": "gsap",
+      "sourceUrl": "https://github.com/greensock/gsap-skills",
+      "version": null,
+      "license": "MIT",
+      "recordedAt": "2026-10-24",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
       "name": "sync-skill-to-github",
       "sourceUrl": null,
       "version": null,
