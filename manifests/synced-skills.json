@@ -2,6 +2,15 @@
   "schemaVersion": 1,
   "skills": [
     {
+      "name": "architect-led-agent-build",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-10-24",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
       "name": "demo-release-checklist",
       "sourceUrl": null,
       "version": null,
