@@ -1,14 +1,15 @@
 # Skill 清单
 
-核对日期：2026-10-24。当前仓库纳入同步 28 个用户级 Skill，另列出 3 个明确排除项；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-10-26。当前仓库纳入同步 29 个用户级 Skill，另列出 3 个明确排除项；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
-## 跨平台自动安装（19）
+## 跨平台自动安装（20）
 
 | Skill | 来源 / 定位 |
 | --- | --- |
 | `ai-paper-scout` | 自维护；AI 论文检索与初筛 |
 | `aihot` | 本地衍生版；当前 AI HOT 资讯查询 |
 | `architect-led-agent-build` | 自维护；架构师经 Agent Orchestrator（AO）派活、看板验收与合并的交付流程 |
+| `ask-matt` | 自维护；Matt/AO 情境路由层（含 AO-SITUATION-TABLE）；迷路时选路，AO 模式下派活只用 `ao spawn` |
 | `demo-release-checklist` | 自维护；演示、路演、答辩及发布前的证据、凭据和公网验证 |
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
 | `git-finish` | 自维护；Git 初始化、阶段保存与最终收尾 |
@@ -52,7 +53,7 @@
 
 ## 自动安装规则
 
-- macOS：安装 `skills/` 与 `skills-macos/`，共 28 个 Skill。
-- Windows：只安装 `skills/`，共 19 个 Skill。
+- macOS：安装 `skills/` 与 `skills-macos/`，共 29 个 Skill。
+- Windows：只安装 `skills/`，共 20 个 Skill。
 - 两个平台都会安装 `marketplace/` 中固定的 5 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill 或插件。
