@@ -96,7 +96,7 @@ class HistoricalUsageTests(unittest.TestCase):
         for selector in (("--session", str(selected)), ("--latest",)):
             for modifier in (("--from", "2026-07-01"), ("--model", "gpt"), ("--group-by", "task")):
                 with self.subTest(selector=selector, modifier=modifier):
-                    rows = self.run_json(*selector, *modifier)
+                    rows = self.run_json(*selector, *modifier, "--timezone", "UTC")
                     self.assertEqual(sum(row["total_tokens"] for row in rows), 40)
                     self.assertEqual(sum(row["tasks"] for row in rows), 1)
 
@@ -112,11 +112,11 @@ class HistoricalUsageTests(unittest.TestCase):
         os.utime(archived, (100, 100))
         for modifier in (("--from", "2026-07-01"), ("--model", "gpt"), ("--group-by", "task")):
             with self.subTest(modifier=modifier):
-                exact = self.run_json("--thread-id", thread, *modifier)
+                exact = self.run_json("--thread-id", thread, *modifier, "--timezone", "UTC")
                 self.assertEqual(sum(row["total_tokens"] for row in exact), 40)
-                history = self.run_json("--thread-id", thread, "--historical", *modifier)
+                history = self.run_json("--thread-id", thread, "--historical", *modifier, "--timezone", "UTC")
                 self.assertEqual(sum(row["total_tokens"] for row in history), 940)
-                active_history = self.run_json("--thread-id", thread, "--historical", "--active-only", *modifier)
+                active_history = self.run_json("--thread-id", thread, "--historical", "--active-only", *modifier, "--timezone", "UTC")
                 self.assertEqual(sum(row["total_tokens"] for row in active_history), 40)
 
     def test_unterminated_archive_corruption_fails_without_replacing_report(self):
