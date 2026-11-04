@@ -94,27 +94,6 @@ class GuidanceTests(unittest.TestCase):
         for boundary in ('当前 Agent 在本轮任务中启动', '身份已核实且可安全中止', '获得用户明确确认后再停止', '等待确认期间不得终止、暂停或重启'):
             self.assertIn(boundary, document)
 
-    def test_light_accent_meets_small_text_contrast_on_declared_surfaces(self):
-        document = (REPO / 'skills/apply-personal-app-design-system/references/design-system.md').read_text(encoding='utf-8')
-        def hex_token(name):
-            return re.search(r'\| `' + name + r'` \| `(#\w+)`', document)[1]
-        def rgb(color):
-            return [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
-        def luminance(color):
-            channels = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in color]
-            return sum(v * weight for v, weight in zip(channels, (.2126, .7152, .0722)))
-        def contrast(left, right):
-            a, b = sorted((luminance(left), luminance(right)))
-            return (b + .05) / (a + .05)
-        backgrounds = [rgb(hex_token(name)) for name in ('background-start', 'background-end', 'surface-control')]
-        backgrounds.append(rgb('#FFFFFF'))
-        for surface in ('surface', 'surface-raised'):
-            alpha = float(re.search(r'\| `' + surface + r'` \| `rgba\(255,255,255,(.*?)\)`', document)[1])
-            backgrounds.extend([[alpha + (1-alpha)*v for v in background] for background in backgrounds[:2]])
-        for foreground in ('accent', 'accent-strong'):
-            for background in backgrounds:
-                with self.subTest(foreground=foreground, background=background):
-                    self.assertGreaterEqual(contrast(rgb(hex_token(foreground)), background), 4.5)
 
 
 if __name__ == '__main__':

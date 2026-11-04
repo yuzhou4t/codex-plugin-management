@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ask Matt（AO 分流）"
+  short_description: "按角色与 AO 模式选择下一步 Skill；派活只走 ao spawn"
+  default_prompt: "使用 $ask-matt 判断当前该走哪条流程，并给出一个明确的下一步。"
+policy:
+  allow_implicit_invocation: true

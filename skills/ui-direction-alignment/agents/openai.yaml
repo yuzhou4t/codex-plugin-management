@@ -1,0 +1,6 @@
+interface:
+  display_name: "界面方向对齐"
+  short_description: "大幅改版时对齐可见效果与保留项，按需比较方案并在实际页面验收"
+  default_prompt: "使用 $ui-direction-alignment 在改版前对齐界面方向，并按测量和截图验收。"
+policy:
+  allow_implicit_invocation: true

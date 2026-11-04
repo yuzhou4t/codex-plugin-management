@@ -2,11 +2,38 @@
   "schemaVersion": 1,
   "skills": [
     {
-      "name": "grok-delegator",
+      "name": "architect-led-agent-build",
       "sourceUrl": null,
       "version": null,
       "license": null,
-      "recordedAt": "2026-09-11",
+      "recordedAt": "2026-10-24",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
+      "name": "ask-matt",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-10-26",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
+      "name": "demo-release-checklist",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-10-18",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
+      "name": "gsap",
+      "sourceUrl": "https://github.com/greensock/gsap-skills",
+      "version": null,
+      "license": "MIT",
+      "recordedAt": "2026-10-24",
       "category": "skills",
       "origin": "self"
     },
@@ -16,6 +43,15 @@
       "version": null,
       "license": null,
       "recordedAt": "2026-08-13",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
+      "name": "ui-direction-alignment",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-10-18",
       "category": "skills",
       "origin": "self"
     }

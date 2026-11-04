@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MARKETPLACE_DIR="$REPO_ROOT/marketplace"
 SKILLS_SOURCE_DIRS=("$REPO_ROOT/skills" "$REPO_ROOT/skills-macos")
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
-PLUGINS=(build-web-apps test-android-apps zotero hyperframes)
+PLUGINS=(build-web-apps test-android-apps zotero hyperframes token-usage-inspector)
 
 if [[ -n "${PLUGIN_MANAGER_CODEX_BIN:-}" ]]; then
   CODEX_CLI="$PLUGIN_MANAGER_CODEX_BIN"
@@ -32,6 +32,21 @@ for skills_source_dir in "${SKILLS_SOURCE_DIRS[@]}"; do
     [[ -d "$skill_dir" && -f "$skill_dir/SKILL.md" ]] || continue
     skill_name="$(basename "$skill_dir")"
     target_dir="$CODEX_SKILLS_DIR/$skill_name"
+    if [[ ! -e "$target_dir" && ! -L "$target_dir" && "$skill_name" == "personal-frontend-builder" ]]; then
+      ln -s "$skill_dir" "$target_dir"
+      echo "Linked shared Skill: $skill_name"
+      (( installed_skill_count += 1 ))
+      continue
+    fi
+    if [[ -L "$target_dir" ]]; then
+      if [[ "$(cd -P "$target_dir" && pwd)" != "$(cd -P "$skill_dir" && pwd)" ]]; then
+        echo "Skill link points elsewhere: $target_dir" >&2
+        exit 1
+      fi
+      echo "Shared Skill already linked: $skill_name"
+      (( installed_skill_count += 1 ))
+      continue
+    fi
     mkdir -p "$target_dir"
     cp -R "$skill_dir"/. "$target_dir"/
     echo "Installed Skill: $skill_name"

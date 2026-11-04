@@ -1,76 +1,28 @@
 ---
 name: git-finish
-description: Automatically close out a main implementation task with Git. Use whenever Codex created or modified durable files in a Git repository, including features, fixes, refactors, project milestones, and aggregated subagent work, even if the user did not mention Git or request a commit. Inspect scope, verify safety, create a focused local commit when changes are task-owned, or report an explicit safe terminal state.
+description: 在持续维护的项目开始创建或修改时主动检查 Git，必要时初始化并建立基线；在可独立描述且已验证的阶段完成后，以及最终交付前，定点暂存并本地提交，无需用户提醒。也用于明确要求的进度保存或 Git 收尾；只读分析、临时实验和单次生成文件不自动建仓。
 ---
 
-# Git Finish
+# Git 初始化与阶段保存
 
-## Core Rule
+按当前用户授权和项目约定，在项目开始、阶段完成和最终交付时主动管理本地版本。用户明确要求不建仓或暂不提交时遵循该要求。保留技能名 `git-finish`，兼容已有引用。
 
-Treat Git closeout as a mandatory final gate for the main implementation task, not as an optional user reminder. If the task changed durable files inside a Git repository and verification passed, inspect and commit task-owned changes before the final completion response.
+## 项目开始
 
-Subagents do not commit by default. The main agent owns the consolidated task commit unless commit ownership was explicitly delegated.
+- 对需要持续维护的项目，先核实实际项目根目录以及是否已属于 Git 工作树，复用现有仓库（包括上层仓库和 worktree），不要误建嵌套仓库或在用户主目录等宽泛目录初始化。
+- 已有仓库：检查相关路径的工作树和暂存状态，识别本任务改动及既有修改。不为检查扫描无关文件内容。
+- 新建独立项目没有仓库：按实际内容配置必要的 `.gitignore`，初始化 Git，并在首批适合跟踪的文件就绪后尽早建立初始提交，不等待整个项目完成，也不创建空提交。
+- 接手已有非仓库项目：先核实应纳入版本管理的源码、配置模板和文档范围，排除凭据、依赖、缓存和生成产物；范围明确时，在修改前建立基线提交。基线用于保存原状，不代表既有内容已经验证。若本轮修改已经开始，不把当前状态冒充修改前基线。
+- 只读分析、临时实验和单次生成文件不自动建立仓库。目录或纳入范围可自行查明时直接处理；只有仍缺少会实质影响范围或授权的信息时才询问，并继续不受影响的工作。
 
-## Safety Boundaries
+## 阶段保存与最终收尾
 
-- Preserve pre-existing user changes.
-- Never stage secrets, caches, private drafts, unrelated files, or bulky generated artifacts by accident.
-- Do not commit a failed or materially unverified implementation as successful work.
-- Do not push unless the user requested it or the remote and visibility policy are explicit.
-- Never use a blind `git add .` in a mixed or unreviewed worktree.
+一个可独立描述的功能、修复或文档阶段形成完整成果并通过相关验证后，就进行本地提交，不等待整个大任务结束。按成果划分阶段，不按修改文件数、工具调用次数或聊天轮次机械提交。最终交付前，再检查是否遗漏本任务的持久改动；无新改动时不重复提交。
 
-## Required Workflow
+1. 复用本轮已有的有效验证结果。只有代码又发生变化、检查失败或出现具体疑点时才重跑相关检查。未通过验证的阶段先修复，不作为已完成成果提交；用户明确要求保存中途进度时，可以提交，并在提交说明和交付中标明未完成内容及验证状态。
+2. 查看相关 diff，检查拟新增文件，运行 `git diff --check`，只暂存本任务文件或可安全分离的片段。初次建仓的基线提交可以包含前一步已核实的既有项目文件；已有仓库中的用户改动不能当作基线打包。
+3. 已有暂存内容也属于用户修改，不能混入提交或为方便而清空。混合修改无法安全拆分时保留现场并说明，继续完成其他交付。
+4. 审阅实际将要提交的差异，检查暂存差异的空白错误，创建聚焦的本地提交。不要盲目 `git add .`，不要提交凭据、缓存或无关产物。主代理通常负责汇总提交，除非已把提交职责交给执行者。
+5. 核对提交和剩余工作树状态，简要报告提交及本任务相关未提交项，不要求固定状态口令或列出无关文件。
 
-1. Locate and inspect the repository:
-
-```bash
-git rev-parse --show-toplevel
-git branch --show-current
-git status --short
-git diff --stat
-git diff --check
-```
-
-2. Classify every changed path.
-   - Identify task-owned, pre-existing user, generated, secret, and unrelated changes.
-   - Include task-owned changes produced by delegated subagents in the main task scope.
-
-3. Confirm verification evidence.
-   - Use fresh tests, build, lint, smoke checks, or artifact inspection appropriate to the change.
-   - If verification failed, do not create a success commit merely to make the tree clean.
-
-4. Stage only task-owned paths:
-
-```bash
-git add path/to/file
-git diff --cached --stat
-git diff --cached --check
-```
-
-Review the staged diff before committing. Use patch staging when task and unrelated edits share a file and can be separated safely; otherwise stop with a blocked state.
-
-5. Create a focused local commit without waiting for another reminder:
-
-```bash
-git commit -m "Describe focused change"
-```
-
-6. Re-check the result:
-
-```bash
-git status --short
-git log -1 --oneline
-```
-
-Remaining unrelated user changes are allowed only when they are identified explicitly in the final response.
-
-## Required Terminal State
-
-Return exactly one Git closeout state:
-
-- `committed: <sha>` — task-owned verified changes were committed.
-- `clean / no-op` — no durable task change exists or the task change was already committed.
-- `not a Git repo` — tell the user and offer `git init` when appropriate.
-- `blocked: <reason>` — committing is unsafe because ownership is unclear, unrelated changes cannot be separated, verification failed, secrets/generated artifacts are in scope, or the user said not to commit.
-
-Do not silently skip Git closeout. Do not report a main implementation task fully complete without one of these states.
+推送、公开发布及改写远端历史分别判断授权；本地提交不自动授权这些动作。提交失败时定位并修复授权范围内的问题，不伪造 Git 身份或改写无关配置；确实受阻则保留成果，如实区分“实现已验证”和“提交尚未完成”。

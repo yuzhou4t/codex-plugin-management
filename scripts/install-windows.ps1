@@ -5,7 +5,7 @@ $MarketplaceDir = Join-Path $RepoRoot "marketplace"
 $SkillsSourceDir = Join-Path $RepoRoot "skills"
 $MacSkillsSourceDir = Join-Path $RepoRoot "skills-macos"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
-$Plugins = @("build-web-apps", "test-android-apps", "zotero", "hyperframes")
+$Plugins = @("build-web-apps", "test-android-apps", "zotero", "hyperframes", "token-usage-inspector")
 
 function Find-CodexCli {
     if ($env:PLUGIN_MANAGER_CODEX_BIN) {
