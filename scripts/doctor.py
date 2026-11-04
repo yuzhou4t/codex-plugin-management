@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import subprocess
+import tomllib
 
 
 PORTABLE_CONFIG_KEYS = ("model_reasoning_effort", "approval_policy", "sandbox_mode", "web_search")
@@ -78,25 +79,63 @@ def main() -> int:
     args = parse_args()
     repo = Path(__file__).resolve().parent.parent
     home = args.home.expanduser().resolve()
+    configured_codex_home = os.environ.get("CODEX_HOME")
+    codex_home = Path(configured_codex_home).expanduser().resolve() if configured_codex_home else home / ".codex"
     errors: list[str] = []
     warnings: list[str] = []
 
     repo_skills, skill_errors = collect_repo_skills(repo)
     errors.extend(skill_errors)
-    installed_dir = home / ".codex" / "skills"
+    installed_dir = codex_home / "skills"
     installed = {path.name for path in installed_dir.iterdir()} if installed_dir.is_dir() else set()
     missing_skills = sorted(set(repo_skills) - installed)
     if missing_skills:
         warnings.append(f"Codex Skills missing: {len(missing_skills)}")
 
+    managed_agents_dir = repo / "skills" / "codex-subagent-team" / "assets" / "agents"
+    managed_agents = sorted(managed_agents_dir.glob("*.toml")) if managed_agents_dir.is_dir() else []
+    if len(managed_agents) != 4:
+        errors.append(f"managed Subagent source count is {len(managed_agents)}, expected 4")
+    installed_agents_dir = codex_home / "agents"
+    matching_agents = []
+    for source in managed_agents:
+        target = installed_agents_dir / source.name
+        if not target.is_file():
+            warnings.append(f"managed Subagent missing: {source.name}")
+        elif sha256(source) != sha256(target):
+            warnings.append(f"managed Subagent differs: {source.name}")
+        else:
+            matching_agents.append(source.name)
+
+    config_path = codex_home / "config.toml"
+    config_data: dict[str, object] = {}
+    if config_path.is_file():
+        try:
+            config_data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+            errors.append("Codex config.toml is unreadable or invalid")
+    registered_agents = []
+    agent_tables = config_data.get("agents") if isinstance(config_data, dict) else None
+    for source in managed_agents:
+        registration = agent_tables.get(source.stem) if isinstance(agent_tables, dict) else None
+        configured_file = registration.get("config_file") if isinstance(registration, dict) else None
+        expected_file = (installed_agents_dir / source.name).resolve()
+        if not isinstance(configured_file, str):
+            warnings.append(f"managed Subagent is not registered: {source.stem}")
+            continue
+        if Path(configured_file).expanduser().resolve() != expected_file:
+            warnings.append(f"managed Subagent registration differs: {source.stem}")
+            continue
+        registered_agents.append(source.stem)
+
     profile = repo / "profiles" / "global-AGENTS.md"
-    installed_profile = home / ".codex" / "AGENTS.md"
+    installed_profile = codex_home / "AGENTS.md"
     if not installed_profile.is_file():
         warnings.append("global AGENTS.md is not installed")
     elif sha256(profile) != sha256(installed_profile):
         warnings.append("global AGENTS.md differs; review before replacing")
 
-    config_keys = assignment_keys(home / ".codex" / "config.toml")
+    config_keys = assignment_keys(config_path)
     missing_config = sorted(set(PORTABLE_CONFIG_KEYS) - config_keys)
     if missing_config:
         warnings.append("portable config keys missing: " + ", ".join(missing_config))
@@ -141,6 +180,8 @@ def main() -> int:
 
     print(f"Repository Skills: {len(repo_skills)}")
     print(f"Installed repository Skills: {len(set(repo_skills) & installed)}")
+    print(f"Installed managed Subagents: {len(matching_agents)}/{len(managed_agents)}")
+    print(f"Registered managed Subagents: {len(registered_agents)}/{len(managed_agents)}")
     print(f"Installed external Skills: {len(expected_external & installed_external)}")
     for message in errors:
         print(f"ERROR: {message}")

@@ -20,6 +20,15 @@
       "origin": "self"
     },
     {
+      "name": "codex-subagent-team",
+      "sourceUrl": null,
+      "version": null,
+      "license": null,
+      "recordedAt": "2026-09-12",
+      "category": "skills",
+      "origin": "self"
+    },
+    {
       "name": "demo-release-checklist",
       "sourceUrl": null,
       "version": null,
