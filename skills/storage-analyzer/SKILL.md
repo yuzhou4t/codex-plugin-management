@@ -15,7 +15,7 @@ description: 分析 macOS 或 Windows 的磁盘占用，定位大文件、缓存
 python3 scripts/scan.py > /tmp/storage_scan.json
 ```
 
-按需读取 [macOS 布局](references/macos.md) 或 [Windows 布局](references/windows.md)。依据大小、归属、用途和再生能力区分可清理缓存、需选择的用户资料和不应直接删除的系统或共享组件。不可读目录说明遗漏，不把估算当作实测释放量。
+按需读取 [macOS 布局](references/macos.md) 或 [Windows 布局](references/windows.md)。依据大小、归属、用途和再生能力区分可清理缓存、需选择的用户资料和不应直接删除的系统或共享组件。不可读目录说明遗漏，不把估算当作实测释放量。Windows 部分统计同时标 `partial`，并在 `denied_paths` 列出遗漏路径，不因体量或 Top-N 过滤而隐藏；`size_kb` 仅为已读部分的下界。把遗漏路径汇总到报告的 `denied`，说明遗漏体量未知。
 
 问题能用短结论回答时直接回答。需要完整报告时，按 `scripts/build_report.py` 的 schema 准备分析数据并生成静态 HTML；大小字段用“约 14 GB”等可解析格式。可清理路径必须具体且已核实，不能仅凭名称把应用数据当缓存。
 
@@ -33,7 +33,7 @@ python3 scripts/build_report.py /tmp/storage_analysis.json /absolute/task/output
 python3 scripts/server.py /tmp/storage_analysis.json
 ```
 
-该服务会提供真实删除能力；仅分析请求使用静态报告。保留服务原有的路径、token、Host 和点击确认保护，绿色项才允许直接删除，橙色项仅可移到废纸篓。授权由用户请求或实际点击提供，不再附加一轮聊天确认。
+该服务会提供真实删除能力；仅分析请求使用静态报告。保留服务原有的路径、token、Host 和点击确认保护，绿色项才允许直接删除，橙色项仅可移到废纸篓。删除操作必须在 `$HOME` 内；`open` 可额外打开平台应用根目录（macOS `/Applications`，Windows `ProgramFiles` / `ProgramFiles(x86)` / `ProgramW6432`），且仍须命中对应操作白名单。授权由用户请求或实际点击提供，不再附加一轮聊天确认。
 
 优先应用自身清理入口或可恢复的操作；移到废纸篓不等于空间已经释放。清理后检查目标、保留数据和实际空间变化。应用卸载按其安装方式处理，必要时使用 `uninstall-macos-tool`。
 

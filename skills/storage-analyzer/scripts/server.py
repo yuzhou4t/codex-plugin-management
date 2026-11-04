@@ -28,6 +28,8 @@ import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from report_html import render_report
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "..", "assets", "report_template.html")
 HOME = os.path.realpath(os.path.expanduser("~"))
@@ -42,6 +44,31 @@ OPEN_ALLOW = set()
 
 def expand(p):
     return os.path.realpath(os.path.expanduser(p))
+
+
+
+def application_roots():
+    if sys.platform.startswith("win"):
+        return tuple(expand(path) for path in (
+            os.environ.get("ProgramFiles", r"C:\Program Files"),
+            os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+            os.environ.get("ProgramW6432", os.environ.get("ProgramFiles", r"C:\Program Files")),
+        ) if path)
+    return (expand("/Applications"),) if sys.platform == "darwin" else ()
+
+
+def within_action_roots(path, mode):
+    roots = (HOME,) + (application_roots() if mode == "open" else ())
+    candidate = os.path.normcase(path)
+    for root in roots:
+        base = os.path.normcase(root)
+        try:
+            if os.path.commonpath((candidate, base)) == base:
+                return True
+        except ValueError:
+            # Different Windows drives cannot share a permitted parent.
+            continue
+    return False
 
 
 def load(src):
@@ -170,9 +197,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path in ("/", "/index.html"):
-            blob = json.dumps(DATA, ensure_ascii=False)
-            cfg = json.dumps({"token": TOKEN, "endpoint": "/action"})
-            html = TPL.replace("__REPORT_DATA__", blob).replace("__DELETE_CONFIG__", cfg)
+            html = render_report(TPL, DATA, {"token": TOKEN, "endpoint": "/action"})
             self._send(200, html, "text/html; charset=utf-8")
         else:
             self._send(404, "not found", "text/plain")
@@ -206,9 +231,9 @@ class Handler(BaseHTTPRequestHandler):
             if rp not in allow:
                 self._send(403, json.dumps({"ok": False, "error": "路径不在白名单：%s" % p}))
                 return
-            # 二级护栏：只允许用户目录或 /Applications（后者仅 open 用，删除白名单不含它）
-            roots = (HOME, "/Applications")
-            if not any(rp == base or rp.startswith(base + os.sep) for base in roots):
+            # Application roots are open-only, even if an analysis mistakenly
+            # puts a system application into a deletion allowlist.
+            if not within_action_roots(rp, mode):
                 self._send(403, json.dumps({"ok": False, "error": "路径越界：%s" % p}))
                 return
             try:
