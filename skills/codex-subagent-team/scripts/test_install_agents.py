@@ -135,7 +135,7 @@ class InstallAgentsTests(unittest.TestCase):
             codex_home = root / "custom-codex"
             user_home.mkdir()
             fake_codex = root / "codex"
-            fake_codex.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            fake_codex.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CODEX_ARGS_LOG"\nexit 0\n', encoding="utf-8")
             fake_codex.chmod(0o755)
 
             result = subprocess.run(
@@ -148,12 +148,17 @@ class InstallAgentsTests(unittest.TestCase):
                     "HOME": str(user_home),
                     "CODEX_HOME": str(codex_home),
                     "PLUGIN_MANAGER_CODEX_BIN": str(fake_codex),
+                    "CODEX_ARGS_LOG": str(root / "codex-arguments.log"),
                 },
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue((codex_home / "skills" / "codex-subagent-team" / "SKILL.md").is_file())
             self.assertTrue((codex_home / "agents" / "sol_executor.toml").is_file())
             self.assertFalse((user_home / ".codex" / "skills").exists())
+            shared_skill = codex_home / "skills" / "personal-frontend-builder"
+            self.assertTrue(shared_skill.is_symlink())
+            self.assertEqual(shared_skill.resolve(), (REPO / "skills" / "personal-frontend-builder").resolve())
+            self.assertIn("plugin add token-usage-inspector@plugin-management --json", (root / "codex-arguments.log").read_text())
 
     def test_powershell_installer_maintains_the_same_atomic_registration_boundary(self) -> None:
         source = (SCRIPT_DIR / "install-agents.ps1").read_text(encoding="utf-8")

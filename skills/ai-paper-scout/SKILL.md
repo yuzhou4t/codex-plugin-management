@@ -20,7 +20,7 @@ Read `references/ccf-ai-venues.md` before doing venue-specific searches.
 3. Prefer primary sources for claims about acceptance, venue, year, awards, proceedings, DOI, and official PDFs. Browse because recent paper lists, awards, and journal issues change.
 4. Score candidates by relevance to the user's topic, venue priority, recency, signal of importance, and usefulness for reading. Treat awards, oral/spotlight status, official benchmark papers, influential datasets, strong surveys, and widely discussed systems as positive signals.
 5. Return a Chinese shortlist. For each paper include title, venue/year, research direction, why it matters, official/source link, PDF/arXiv link when available, and Zotero import readiness.
-6. If the user asks to add papers to Zotero, use the Zotero skill/API or Zotero Connector flow. Confirm exact records and destination collection before writing. Do not manually copy PDFs into Zotero `storage`.
+6. If the user asks to add papers to Zotero, use the Zotero skill/API or Zotero Connector flow. Resolve the requested records and collection from context and Zotero; ask only if multiple plausible targets remain. An explicit import request already authorizes that import. Do not manually copy PDFs into Zotero `storage`.
 
 ## Output Shape
 

@@ -1,36 +1,32 @@
 # Skill 清单
 
-核对日期：2026-09-12。当前仓库管理或明确排除 37 个用户级 Skill；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-11-04。当前仓库纳入同步 30 个用户级 Skill，另列出 3 个明确排除项；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
-## 跨平台自动安装（25）
+## 跨平台自动安装（21）
 
 | Skill | 来源 / 定位 |
 | --- | --- |
 | `ai-paper-scout` | 自维护；AI 论文检索与初筛 |
 | `aihot` | 本地衍生版；当前 AI HOT 资讯查询 |
-| `apply-personal-app-design-system` | 自维护；TTS、AI Recording 与后续个人软件的白蓝设计系统 |
+| `architect-led-agent-build` | 自维护；架构师经 Agent Orchestrator（AO）派活、看板验收与合并的交付流程 |
+| `ask-matt` | 自维护；Matt/AO 情境路由层（含 AO-SITUATION-TABLE）；迷路时选路，AO 模式下派活只用 `ao spawn` |
 | `codex-subagent-team` | 自维护；Astra 规划、Sol/Terra 执行、Terra 验收与 Luna 定点修补，并同步 4 个全局 Subagent |
+| `demo-release-checklist` | 自维护；演示、路演、答辩及发布前的证据、凭据和公网验证 |
 | `discuss-confirm-write-obsidian` | 自维护；Obsidian 写入确认协议 |
-| `git-finish` | 自维护；Git 任务收尾 |
+| `git-finish` | 自维护；Git 初始化、阶段保存与最终收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
-| `grok-delegator` | 自维护；Codex 规划、Grok 调研或编码、Codex 独立验收 |
-| `gsap-core` | GSAP 官方快照 |
-| `gsap-frameworks` | GSAP 官方快照 |
-| `gsap-performance` | GSAP 官方快照 |
-| `gsap-plugins` | GSAP 官方快照 |
-| `gsap-react` | GSAP 官方快照 |
-| `gsap-scrolltrigger` | GSAP 官方快照 |
-| `gsap-timeline` | GSAP 官方快照 |
-| `gsap-utils` | GSAP 官方快照 |
+| `gsap` | 本机合并版；统一入口，原 8 个 GSAP 官方专题改为参考资料 |
 | `hv-analysis` | 本地衍生版；横纵分析工作流 |
 | `ima-skill` | 已安装的 IMA OpenAPI Skill 快照 |
 | `ltci-public-data-engineering` | 自维护；长护险公共数据工程 |
 | `paper-terminology-translation-explanation` | 自维护；论文术语翻译与解释 |
+| `personal-frontend-builder` | 自维护；个人前端构建与前端开发提示词整理，Codex / AntiGravity 共用 |
 | `project-docs-sync` | 自维护；项目文档同步与交接 |
 | `project-orientation` | 自维护；打开、理解和安全启动项目 |
 | `stabilize-local-agent-project` | 自维护；阻止无界扫描、Git/worktree 失控和磁盘留存膨胀 |
 | `storage-analyzer` | Khazix 上游快照；macOS / Windows 存储分析 |
 | `sync-skill-to-github` | 自维护；安全审查并将新建或下载的 Skill 同步到 GitHub |
+| `ui-direction-alignment` | 自维护；大幅改版的界面方向对齐、测量与真实页面验收 |
 
 ## 仅由 macOS 自动安装（9）
 
@@ -58,8 +54,8 @@
 
 ## 自动安装规则
 
-- macOS：安装 `skills/` 与 `skills-macos/`，共 34 个 Skill。
-- Windows：只安装 `skills/`，共 25 个 Skill。
+- macOS：安装 `skills/` 与 `skills-macos/`，共 30 个 Skill。
+- Windows：只安装 `skills/`，共 21 个 Skill。
 - 两个平台都会从 `codex-subagent-team` 安装 4 个用户级 Subagent；只覆盖这 4 个受管名称，保留其他 Agent。
-- 两个平台都会安装 `marketplace/` 中固定的 4 个插件。
+- 两个平台都会安装 `marketplace/` 中固定的 5 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill、Agent 或插件。

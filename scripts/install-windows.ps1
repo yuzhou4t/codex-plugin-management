@@ -7,7 +7,7 @@ $MacSkillsSourceDir = Join-Path $RepoRoot "skills-macos"
 $CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE ".codex" }
 $CodexSkillsDir = Join-Path $CodexHome "skills"
 $SubagentInstaller = Join-Path $SkillsSourceDir "codex-subagent-team\scripts\install-agents.ps1"
-$Plugins = @("build-web-apps", "test-android-apps", "zotero", "hyperframes")
+$Plugins = @("build-web-apps", "test-android-apps", "zotero", "hyperframes", "token-usage-inspector")
 
 function Find-CodexCli {
     if ($env:PLUGIN_MANAGER_CODEX_BIN) {

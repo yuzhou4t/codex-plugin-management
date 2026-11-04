@@ -1,0 +1,364 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import importlib.util
+import io
+import json
+import ntpath
+import posixpath
+import sys
+import argparse
+import tempfile
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import patch
+from pathlib import Path
+
+
+SCRIPT = Path(__file__).with_name("inspect_token_usage.py")
+SPEC = importlib.util.spec_from_file_location("inspect_token_usage", SCRIPT)
+assert SPEC and SPEC.loader
+MODULE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = MODULE
+SPEC.loader.exec_module(MODULE)
+
+
+class InspectTokenUsageTests(unittest.TestCase):
+    def write_rollout(self, records: list[dict]) -> Path:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        directory = Path(temporary.name)
+        path = directory / "rollout-test.jsonl"
+        path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
+        return path
+
+    def token_count(self, total: int, last: int) -> dict:
+        return {"type": "event_msg", "payload": {"type": "token_count", "info": {
+            "total_token_usage": {"input_tokens": total, "total_tokens": total},
+            "last_token_usage": {"input_tokens": last, "total_tokens": last},
+        }}}
+
+    def test_mixed_usage_sources_count_each_native_call_once(self) -> None:
+        for native_first in (False, True):
+            with self.subTest(native_first=native_first):
+                records = [{"type": "event_msg", "payload": {"type": "task_started", "turn_id": "mixed"}}]
+                for total, last in ((10, 10), (30, 20)):
+                    pair = [self.token_count(total, last), {
+                        "type": "token_usage_record", "payload": {
+                            "turn_id": "mixed", "response_id": f"response-{total}",
+                            "usage": {"input_tokens": last, "total_tokens": last},
+                            "turn_token_usage": {"input_tokens": total, "total_tokens": total},
+                        },
+                    }]
+                    records.extend(reversed(pair) if native_first else pair)
+                turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+                self.assertEqual([row["total_tokens"] for row in calls], [10, 20])
+                self.assertEqual([row["call"] for row in calls], [1, 2])
+                self.assertEqual(turns[0]["total_tokens"], 30)
+
+    def test_unchanged_snapshots_do_not_repeat_last_call(self) -> None:
+        records = [
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "first"}},
+            self.token_count(0, 0),
+            self.token_count(10, 10), self.token_count(10, 10),
+            {"type": "event_msg", "payload": {"type": "task_complete", "turn_id": "first"}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "second"}},
+            self.token_count(10, 10), self.token_count(30, 20), self.token_count(30, 20),
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual([(row["turn_id"], row["call"], row["total_tokens"]) for row in calls], [
+            ("first", 1, 10), ("second", 1, 20),
+        ])
+        self.assertEqual([row["total_tokens"] for row in turns], [10, 20])
+
+    def test_native_source_without_turn_snapshots_still_produces_turn_totals(self) -> None:
+        records = [{"type": "event_msg", "payload": {"type": "task_started", "turn_id": "mixed"}}]
+        for total, last in ((10, 10), (30, 20)):
+            records.extend([self.token_count(total, last), {
+                "type": "token_usage_record", "payload": {
+                    "turn_id": "mixed", "usage": {"input_tokens": last, "total_tokens": last},
+                },
+            }])
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual(turns[0]["total_tokens"], 30)
+        self.assertEqual(sum(row["total_tokens"] for row in calls), 30)
+
+    def test_spawned_exact_view_excludes_inherited_turns_and_counters(self) -> None:
+        records = [
+            {"type": "session_meta", "payload": {"id": "child", "source": {"subagent": {"thread_spawn": {"parent": "parent"}}}}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "inherited"}},
+            self.token_count(100, 100),
+            {"type": "inter_agent_communication_metadata", "payload": {}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "child-turn"}},
+            self.token_count(100, 100), self.token_count(125, 25), self.token_count(150, 25),
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual([(row["turn_id"], row["total_tokens"]) for row in turns], [("child-turn", 50)])
+        self.assertEqual([row["total_tokens"] for row in calls], [25, 25])
+
+    def test_spawned_inherited_native_records_do_not_select_native_source(self) -> None:
+        records = [
+            {"type": "session_meta", "payload": {"source": {"subagent": {"thread_spawn": {}}}}},
+            {"type": "token_usage_record", "payload": {"turn_id": "parent", "usage": {"total_tokens": 100}, "turn_token_usage": {"total_tokens": 100}}},
+            self.token_count(100, 100),
+            {"type": "inter_agent_communication_metadata", "payload": {}},
+            {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "child"}},
+            self.token_count(125, 25),
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual([(row["turn_id"], row["total_tokens"]) for row in turns], [("child", 25)])
+        self.assertEqual([row["total_tokens"] for row in calls], [25])
+
+    def test_recursive_project_matching_respects_roots_and_path_boundaries(self) -> None:
+        cases = [
+            (posixpath, "/", "/work/project", True),
+            (posixpath, "/work/project", "/work/project/child", True),
+            (posixpath, "/work/project", "/work/project-other", False),
+            (ntpath, "C:\\", "C:\\work\\project", True),
+            (ntpath, "C:\\", "D:\\work\\project", False),
+            (ntpath, "C:\\work", "C:\\work-other", False),
+            (ntpath, "\\\\server\\share\\", "\\\\server\\share\\project", True),
+        ]
+        for path_module, requested, recorded, expected in cases:
+            with self.subTest(requested=requested, recorded=recorded), patch.object(MODULE.os, "path", path_module):
+                self.assertEqual(MODULE.project_matches(recorded, requested, True), expected)
+                self.assertFalse(MODULE.project_matches(recorded, requested, False))
+
+    def test_unreadable_selected_rollout_fails_during_metadata_or_usage_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sessions = root / "sessions"
+            sessions.mkdir()
+            rollout = sessions / "rollout-denied.jsonl"
+            rollout.write_text(json.dumps({"type": "session_meta", "payload": {"id": "denied", "cwd": "/work"}}) + "\n", encoding="utf-8")
+            original_read = Path.read_bytes
+            for fail_on_read in (1, 2):
+                with self.subTest(fail_on_read=fail_on_read):
+                    reads = 0
+
+                    def fail_read(path):
+                        nonlocal reads
+                        if path == rollout:
+                            reads += 1
+                            if reads == fail_on_read:
+                                raise PermissionError("synthetic read denial")
+                        return original_read(path)
+
+                    output = root / "report.json"
+                    output.write_text("existing report", encoding="utf-8")
+                    stderr, stdout = io.StringIO(), io.StringIO()
+                    with patch.object(MODULE.sys, "argv", [
+                        "inspect_token_usage.py", "--codex-home", str(root), "--all-sessions", "--format", "json", "--output", str(output),
+                    ]), patch.object(Path, "read_bytes", fail_read), redirect_stderr(stderr), redirect_stdout(stdout):
+                        result = MODULE.main()
+                    self.assertEqual(result, 2)
+                    self.assertIn(str(rollout), stderr.getvalue())
+                    self.assertIn("synthetic read denial", stderr.getvalue())
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertEqual(output.read_text(encoding="utf-8"), "existing report")
+
+    def test_current_event_schema_groups_calls_under_task_started_turns(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-a"}},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 100, "cached_input_tokens": 40, "output_tokens": 10, "reasoning_output_tokens": 4, "total_tokens": 110},
+                "total_token_usage": {"input_tokens": 100, "cached_input_tokens": 40, "output_tokens": 10, "reasoning_output_tokens": 4, "total_tokens": 110},
+            }}},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 50, "cached_input_tokens": 20, "output_tokens": 5, "reasoning_output_tokens": 2, "total_tokens": 55},
+                "total_token_usage": {"input_tokens": 150, "cached_input_tokens": 60, "output_tokens": 15, "reasoning_output_tokens": 6, "total_tokens": 165},
+            }}},
+            {"timestamp": "2026-09-20T00:00:03.000Z", "type": "event_msg", "payload": {"type": "task_complete", "turn_id": "turn-a"}},
+            {"timestamp": "2026-09-20T00:01:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-b"}},
+            {"timestamp": "2026-09-20T00:01:01.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 70, "cached_input_tokens": 10, "output_tokens": 7, "reasoning_output_tokens": 3, "total_tokens": 77},
+                "total_token_usage": {"input_tokens": 220, "cached_input_tokens": 70, "output_tokens": 22, "reasoning_output_tokens": 9, "total_tokens": 242},
+            }}},
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual([(row["turn_id"], row["status"], row["total_tokens"]) for row in turns], [
+            ("turn-a", "complete", 165),
+            ("turn-b", "in_progress", 77),
+        ])
+        self.assertEqual([row["total_tokens"] for row in calls], [110, 55, 77])
+        self.assertEqual(turns[0]["uncached_input_tokens"], 90)
+        self.assertEqual(turns[1]["uncached_input_tokens"], 60)
+
+    def test_legacy_token_usage_records_remain_supported(self) -> None:
+        records = [{
+            "timestamp": "2026-09-20T00:00:01.000Z",
+            "type": "token_usage_record",
+            "payload": {
+                "turn_id": "legacy-turn",
+                "usage": {"input_tokens": 40, "cached_input_tokens": 10, "output_tokens": 4, "total_tokens": 44},
+                "turn_token_usage": {"input_tokens": 40, "cached_input_tokens": 10, "output_tokens": 4, "total_tokens": 44},
+            },
+        }]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=False)
+        self.assertEqual(turns[0]["turn_id"], "legacy-turn")
+        self.assertEqual(turns[0]["total_tokens"], 44)
+        self.assertEqual(calls[0]["uncached_input_tokens"], 30)
+
+    def test_live_reader_ignores_only_an_unterminated_final_fragment(self) -> None:
+        path = self.write_rollout([{"type": "complete", "payload": {"value": 1}}])
+        with path.open("ab") as handle:
+            handle.write(b'{"type":"partial"')
+        self.assertEqual(list(MODULE.load_records(path)), [{"type": "complete", "payload": {"value": 1}}])
+
+        path.write_bytes(b'{"type":"broken"}\nnot-json\n')
+        with self.assertRaises(json.JSONDecodeError):
+            list(MODULE.load_records(path))
+
+    def test_aborted_turn_is_terminal_and_claims_the_pending_user_prompt(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "response_item", "payload": {
+                "type": "message", "role": "user", "content": [{"type": "input_text", "text": "Inspect the current rollout"}],
+            }},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-aborted"}},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 20, "output_tokens": 3, "total_tokens": 23},
+                "total_token_usage": {"input_tokens": 20, "output_tokens": 3, "total_tokens": 23},
+            }}},
+            {"timestamp": "2026-09-20T00:00:03.000Z", "type": "event_msg", "payload": {"type": "turn_aborted", "turn_id": "turn-aborted"}},
+        ]
+        turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["status"], "aborted")
+        self.assertEqual(turns[0]["prompt"], "Inspect the current rollout")
+
+    def test_user_message_event_is_associated_with_the_following_turn(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {
+                "type": "user_message", "message": "Show token totals",
+            }},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-event"}},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 12, "output_tokens": 2, "total_tokens": 14},
+                "total_token_usage": {"input_tokens": 12, "output_tokens": 2, "total_tokens": 14},
+            }}},
+        ]
+        turns, _ = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["prompt"], "Show token totals")
+
+    def test_post_start_user_messages_attach_to_the_active_turn_without_duplicates(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-active"}},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "response_item", "payload": {
+                "type": "message", "role": "user", "content": [{"type": "input_text", "text": "Inspect after start"}],
+            }},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {"type": "user_message", "message": "Inspect after start"}},
+            {"timestamp": "2026-09-20T00:00:03.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 8, "output_tokens": 1, "total_tokens": 9},
+                "total_token_usage": {"input_tokens": 8, "output_tokens": 1, "total_tokens": 9},
+            }}},
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["prompt"], "Inspect after start")
+        self.assertEqual(calls[0]["prompt"], "Inspect after start")
+
+    def test_started_turn_exposes_prompt_before_first_token_count(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-new"}},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "event_msg", "payload": {"type": "user_message", "message": "Prompt before usage"}},
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(calls, [])
+        self.assertEqual(len(turns), 1)
+        self.assertEqual(turns[0]["prompt"], "Prompt before usage")
+        self.assertEqual(turns[0]["status"], "in_progress")
+        self.assertEqual(turns[0]["total_tokens"], 0)
+
+    def test_multiline_prompt_is_flattened_and_deduplicated(self) -> None:
+        records = [
+            {"timestamp": "2026-09-20T00:00:00.000Z", "type": "event_msg", "payload": {"type": "task_started", "turn_id": "turn-multiline"}},
+            {"timestamp": "2026-09-20T00:00:01.000Z", "type": "response_item", "payload": {
+                "type": "message", "role": "user", "content": [{"type": "input_text", "text": "First line\nSecond line"}],
+            }},
+            {"timestamp": "2026-09-20T00:00:02.000Z", "type": "event_msg", "payload": {
+                "type": "user_message", "message": "First line\r\nSecond line",
+            }},
+            {"timestamp": "2026-09-20T00:00:03.000Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                "last_token_usage": {"input_tokens": 3, "output_tokens": 1, "total_tokens": 4},
+                "total_token_usage": {"input_tokens": 3, "output_tokens": 1, "total_tokens": 4},
+            }}},
+        ]
+        turns, calls = MODULE.parse_usage(self.write_rollout(records), include_prompt=True)
+        self.assertEqual(turns[0]["prompt"], "First line Second line")
+        self.assertEqual(calls[0]["prompt"], "First line Second line")
+
+    def test_historical_aggregation_preserves_active_and_archived_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for directory, task, record_type in [("sessions", "active", "token_usage_record"), ("archived_sessions", "archived", "event_msg")]:
+                folder = root / directory
+                folder.mkdir()
+                usage = {"input_tokens": 10, "output_tokens": 2, "total_tokens": 12}
+                records = [{"timestamp": "2026-10-01T00:00:00Z", "type": "session_meta", "payload": {"id": task, "cwd": "/test-project", "source": "cli"}}]
+                if record_type == "token_usage_record":
+                    records.append({"timestamp": "2026-10-01T00:00:01Z", "type": record_type, "payload": {"turn_id": "turn-1", "usage": usage, "turn_token_usage": usage}})
+                else:
+                    records.append({"timestamp": "2026-10-01T00:00:01Z", "type": record_type, "payload": {"type": "token_count", "info": {"last_token_usage": usage, "total_token_usage": usage}}})
+                (folder / f"rollout-{task}.jsonl").write_text("".join(json.dumps(row) + "\n" for row in records), encoding="utf-8")
+            args = MODULE.build_parser().parse_args(["--codex-home", str(root), "--project", "/test-project", "--group-by", "task", "--timezone", "UTC"])
+            rows = MODULE.aggregate_usage(args)
+            self.assertEqual({row["task"]: row["total_tokens"] for row in rows}, {"active": 12, "archived": 12})
+            args.active_only = True
+            rows = MODULE.aggregate_usage(args)
+            self.assertEqual([(row["task"], row["total_tokens"]) for row in rows], [("active", 12)])
+
+    def test_csv_serialization_uses_translation_safe_line_endings(self) -> None:
+        rendered = MODULE.serialize([{"turn": 1, "status": "complete", "total_tokens": 9}], "csv", "turn")
+        self.assertNotIn("\r\n", rendered)
+        self.assertEqual(rendered.count("\n"), 2)
+
+    def test_latest_session_requires_explicit_opt_in(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sessions = root / "sessions"
+            sessions.mkdir()
+            rollout = sessions / "rollout-latest.jsonl"
+            rollout.write_text("{}\n", encoding="utf-8")
+            args = argparse.Namespace(session=None, thread_id=None, latest=False, codex_home=str(root))
+            with self.assertRaisesRegex(ValueError, "explicit --latest"):
+                MODULE.resolve_session(args)
+            args.latest = True
+            self.assertEqual(MODULE.resolve_session(args), rollout)
+
+    def test_watch_rejects_structured_stdout_but_allows_atomic_output(self) -> None:
+        common = ["inspect_token_usage.py", "--session", str(self.write_rollout([])), "--watch", "1", "--format", "json"]
+        with patch.object(MODULE.sys, "argv", common):
+            self.assertEqual(MODULE.main(), 2)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "usage.json"
+            with patch.object(MODULE.sys, "argv", [*common, "--output", str(output)]), patch.object(MODULE, "write_snapshot", side_effect=KeyboardInterrupt):
+                self.assertEqual(MODULE.main(), 0)
+
+    def test_output_cannot_replace_the_selected_rollout(self) -> None:
+        rollout = self.write_rollout([])
+        original = rollout.read_bytes()
+        with patch.object(MODULE.sys, "argv", [
+            "inspect_token_usage.py", "--session", str(rollout), "--output", str(rollout),
+        ]):
+            self.assertEqual(MODULE.main(), 2)
+        self.assertEqual(rollout.read_bytes(), original)
+
+    def test_list_sessions_honors_csv_output_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sessions = root / "sessions"
+            sessions.mkdir()
+            (sessions / "rollout-2026-09-20-task-id.jsonl").write_text("{}\n", encoding="utf-8")
+            output = root / "sessions.csv"
+            args = argparse.Namespace(
+                codex_home=str(root), limit=20, include_prompt=False,
+                format="csv", output=str(output),
+            )
+            MODULE.list_local_sessions(args)
+            rendered = output.read_text(encoding="utf-8")
+            self.assertEqual(rendered.splitlines()[0], "modified_local,task_id,path,started,source,project")
+            self.assertIn("rollout-2026-09-20-task-id.jsonl", rendered)
+            self.assertEqual(list(root.glob(".sessions.csv.*.tmp")), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
