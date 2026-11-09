@@ -1,6 +1,6 @@
 interface:
-  display_name: "架构师带代理交付"
-  short_description: "SPEC、拆票、经 AO 派活并自验；与 Matt Skill 按阶段衔接"
-  default_prompt: "使用 $architect-led-agent-build 按架构师流程推进；派活只用 ao spawn。"
+  display_name: "架构师项目闭环"
+  short_description: "用 Matt 讨论新项目与功能实现，接续在途进度，经 AO 派活、复验并回写教训"
+  default_prompt: "使用 $architect-led-agent-build 开启或接手当前项目，用 Matt 讨论需要确定的功能与实现方案，沿用已有决定和进度，再按授权经 AO 派活并复验到约定结果。"
 policy:
   allow_implicit_invocation: true

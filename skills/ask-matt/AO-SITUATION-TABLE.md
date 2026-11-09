@@ -10,6 +10,8 @@
 | AO 工单执行者 | 「你负责 T3，按任务书实现」 | 仅本票需要的 `tdd` / `diagnosing-bugs` / `pr` 等 | 启动架构师流程、认领他票、`implement-spec`、自行继续派活 |
 | 小改，目标清楚 | 「把这个按钮文案改掉」 | 直接做；明确要测试先行时再 `tdd` | 强行 grill→SPEC→拆票，或自动开架构师交付 |
 | 思路未清 | 「我有个想法，先帮我问清楚」 | 有仓且允许沉淀：`grill-with-docs`；无仓：`grill-me`；只读则对话澄清 | 因有仓库就自动写词表/ADR；问环境可自查的事实 |
+| 新项目 + 明确委派统筹 | 「开一个新项目，你统筹，让 Cursor 做」 | `architect-led-agent-build` 先进入 Matt 讨论；有目录用 `grill-with-docs`，无目录用 `grill-me`；已有讨论结论则沿用；再按规模形成规格、工单并 `ao spawn` | 仅凭一句目标直接派发；重新询问已确认的决定 |
+| 已有代理项目，功能实现需要讨论 | 「想加这个功能，先讨论怎么实现，定下来再做」 | Matt 讨论结合现有代码、流程和决定明确功能与方案；随后按已有授权进入任务书与 `ao spawn`；只讨论则交回结论 | 因已有项目而跳过功能讨论；重新规划已接受的整个项目 |
 | 多会话 + 明确委派统筹 | 「周五演示，你当架构师，让 Codex 做」 | `architect-led-agent-build`；缺规格用 `to-spec`，缺工单用 `to-tickets`（Grok Bot 用 Skill 工具按名加载）；然后任务书 → `ao spawn` | 用 `implement` / `implement-spec` 接管派活；重复生成已有权威 SPEC |
 | 外来 bug / 请求堆积 | 「把用户报来的问题整理成可派工单」 | `triage`；AO 下由架构师决定派发 | 再 triage `to-tickets` 已产出的票；把 `ready-for-agent` 当抢票授权 |
 | 难 bug / 间歇 / 性能回归 | 「这个偶发错误一直定位不出来」 | `diagnosing-bugs`；先建能红的反馈环 | 无复现就猜因；借诊断扩大到他票 |
