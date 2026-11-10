@@ -1,7 +1,7 @@
 {
   "name": "hyperframes",
-  "version": "0.2.0",
-  "description": "Author and render HyperFrames HTML video compositions, with an explicit quick or narrated website-to-video workflow.",
+  "version": "0.2.1",
+  "description": "Author and render HyperFrames HTML video compositions.",
   "author": {
     "name": "HeyGen",
     "email": "hyperframes@heygen.com",
@@ -26,13 +26,12 @@
   "interface": {
     "displayName": "HyperFrames by HeyGen",
     "shortDescription": "Write HTML, render video",
-    "longDescription": "Build videos from HTML with HyperFrames. Preserve its composition, timing, timeline, and media contracts; discover the installed CLI through live help; install reusable registry blocks and components; and explicitly turn a website into either a quick promo or a narrated production.",
+    "longDescription": "Build videos from HTML with HyperFrames. Preserve its composition, timing, timeline, and media contracts and discover the installed CLI through live help.",
     "developerName": "HeyGen",
     "category": "Creativity",
     "capabilities": ["Read", "Write"],
     "websiteURL": "https://hyperframes.heygen.com",
     "defaultPrompt": [
-      "Turn this website into a 20-second product promo",
       "Create an animated title card with kinetic type",
       "Add synced captions to this voiceover"
     ],

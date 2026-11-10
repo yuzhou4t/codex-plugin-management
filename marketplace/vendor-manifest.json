@@ -4,10 +4,10 @@
   "plugins": [
     {
       "name": "build-web-apps",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "upstream": "https://github.com/openai/plugins",
       "license": "MIT",
-      "notes": "Locally curated subset"
+      "notes": "Local subset: visual frontend design"
     },
     {
       "name": "test-android-apps",
@@ -24,9 +24,10 @@
     },
     {
       "name": "hyperframes",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "upstream": "https://github.com/heygen-com/hyperframes",
-      "license": "Apache-2.0"
+      "license": "Apache-2.0",
+      "notes": "Local subset: composition authoring and CLI operation"
     },
     {
       "name": "token-usage-inspector",

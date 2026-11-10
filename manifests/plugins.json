@@ -7,7 +7,7 @@
   "repositoryPlugins": [
     {
       "id": "build-web-apps@plugin-management",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "required": true
     },
     {
@@ -22,7 +22,7 @@
     },
     {
       "id": "hyperframes@plugin-management",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "required": true
     },
     {
@@ -35,7 +35,6 @@
     "browser@openai-bundled",
     "computer-use@openai-bundled",
     "documents@openai-primary-runtime",
-    "latex@openai-bundled",
     "pdf@openai-primary-runtime",
     "presentations@openai-primary-runtime",
     "sites@openai-bundled",
@@ -45,7 +44,6 @@
   ],
   "optionalCuratedPlugins": [
     "canva@openai-curated",
-    "figma@openai-curated",
     "github@openai-curated",
     "vercel@openai-curated"
   ]

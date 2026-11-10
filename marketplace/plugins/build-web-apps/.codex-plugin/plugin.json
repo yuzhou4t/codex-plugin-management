@@ -1,7 +1,7 @@
 {
   "name": "build-web-apps",
-  "version": "0.2.0",
-  "description": "Build visually driven frontends and handle specialized Stripe platform and Supabase/Postgres workflows.",
+  "version": "0.2.1",
+  "description": "Build visually driven frontends and redesign existing interfaces.",
   "author": {
     "name": "OpenAI",
     "email": "support@openai.com",
@@ -16,18 +16,13 @@
     "product-apps",
     "frontend",
     "redesign",
-    "image-generation",
-    "stripe",
-    "stripe-connect",
-    "stripe-treasury",
-    "supabase",
-    "postgres"
+    "image-generation"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Build Web Apps",
-    "shortDescription": "Visual frontend, Stripe platform, and Postgres workflows",
-    "longDescription": "Use Build Web Apps for explicit greenfield visual design or substantial redesigns, specialized non-Vercel Stripe platform work, and Supabase/Postgres design or tuning.",
+    "shortDescription": "Visual frontend design and implementation",
+    "longDescription": "Use Build Web Apps for explicit greenfield visual design or substantial redesigns.",
     "developerName": "OpenAI",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Read", "Write"],

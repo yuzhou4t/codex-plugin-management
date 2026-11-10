@@ -1,8 +1,8 @@
 # Skill 清单
 
-核对日期：2026-11-04。当前仓库纳入同步 30 个用户级 Skill，另列出 3 个明确排除项；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
+核对日期：2026-11-10。当前仓库纳入同步 29 个用户级 Skill，另列出 2 个明确排除项；Codex 的 `.system` 目录、空目录和插件缓存不计入统计。
 
-## 跨平台自动安装（21）
+## 跨平台自动安装（20）
 
 | Skill | 来源 / 定位 |
 | --- | --- |
@@ -16,7 +16,6 @@
 | `git-finish` | 自维护；Git 初始化、阶段保存与最终收尾 |
 | `github-precedent-scout` | 自维护；GitHub 开源先例侦察 |
 | `gsap` | 本机合并版；统一入口，原 8 个 GSAP 官方专题改为参考资料 |
-| `hv-analysis` | 本地衍生版；横纵分析工作流 |
 | `ima-skill` | 已安装的 IMA OpenAPI Skill 快照 |
 | `ltci-public-data-engineering` | 自维护；长护险公共数据工程 |
 | `paper-terminology-translation-explanation` | 自维护；论文术语翻译与解释 |
@@ -44,18 +43,17 @@
 | `science-workshop-journal-tracking` | 绑定本机 journal workshop 项目路径 |
 | `uninstall-macos-tool` | macOS 专属卸载流程 |
 
-## 不进入仓库（3）
+## 不进入仓库（2）
 
 | Skill | 排除原因 |
 | --- | --- |
-| `debug-codex-lark-relay` | 飞书提醒 / relay 基础设施，按用户要求保持本机私有 |
 | `ima-skill.backup-20260801-155403` | 过期备份，避免与当前 `ima-skill` 重复和误加载 |
 | `hatch-pet` | Codex 当前系统托管的 curated Skill，不在私有仓库重复固定旧副本 |
 
 ## 自动安装规则
 
-- macOS：安装 `skills/` 与 `skills-macos/`，共 30 个 Skill。
-- Windows：只安装 `skills/`，共 21 个 Skill。
+- macOS：安装 `skills/` 与 `skills-macos/`，共 29 个 Skill。
+- Windows：只安装 `skills/`，共 20 个 Skill。
 - 两个平台都会从 `codex-subagent-team` 安装 4 个用户级 Subagent；只覆盖这 4 个受管名称，保留其他 Agent。
 - 两个平台都会安装 `marketplace/` 中固定的 5 个插件。
 - 安装脚本不会删除不属于本仓库的其他 Skill、Agent 或插件。

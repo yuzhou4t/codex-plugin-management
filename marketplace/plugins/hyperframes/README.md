@@ -4,12 +4,10 @@ OpenAI Codex plugin for [HyperFrames](https://hyperframes.heygen.com) — an ope
 
 ## What's included
 
-Four skills for authoring and rendering video:
+Two skills for authoring and rendering video:
 
 - **hyperframes** — framework-specific composition, timing, timeline, media, and deterministic-capture contracts, with optional visual references
 - **hyperframes-cli** — CLI operation using the installed release's live `--help` and `doctor` output
-- **hyperframes-registry** — `hyperframes add` to install reusable blocks and components (social overlays, shader transitions, data viz, effects)
-- **website-to-hyperframes** — explicitly requested website-to-video work, routed to a quick or narrated/full production path
 
 General GSAP guidance comes from the standalone official GSAP skills rather than a duplicate skill in this plugin.
 
