@@ -34,7 +34,7 @@ for skills_source_dir in "${SKILLS_SOURCE_DIRS[@]}"; do
     [[ -d "$skill_dir" && -f "$skill_dir/SKILL.md" ]] || continue
     skill_name="$(basename "$skill_dir")"
     target_dir="$CODEX_SKILLS_DIR/$skill_name"
-    if [[ ! -e "$target_dir" && ! -L "$target_dir" && "$skill_name" == "personal-frontend-builder" ]]; then
+    if [[ ! -e "$target_dir" && ! -L "$target_dir" && ( "$skill_name" == "personal-frontend-builder" || "$skill_name" == "code-promo-video" ) ]]; then
       ln -s "$skill_dir" "$target_dir"
       echo "Linked shared Skill: $skill_name"
       (( installed_skill_count += 1 ))
