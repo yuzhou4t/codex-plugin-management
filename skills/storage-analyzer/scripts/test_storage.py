@@ -89,8 +89,10 @@ class ActionRootTests(unittest.TestCase):
 
     def test_operation_allowlist_and_deletion_boundary_are_both_enforced(self):
         with tempfile.TemporaryDirectory() as temporary:
-            home = Path(temporary) / 'home'
-            application = Path(temporary) / 'applications' / 'Example'
+            # The handler and real allowlists use canonical paths (e.g. macOS /tmp).
+            root = Path(temporary).resolve()
+            home = root / 'home'
+            application = root / 'applications' / 'Example'
             home.mkdir()
             application.mkdir(parents=True)
             allowed = {str(application)}
@@ -105,8 +107,10 @@ class ActionRootTests(unittest.TestCase):
 
     def test_symlink_cannot_escape_home_deletion_boundary(self):
         with tempfile.TemporaryDirectory() as temporary:
-            home = Path(temporary) / 'home'
-            target = Path(temporary) / 'outside'
+            # The handler and real allowlists use canonical paths (e.g. macOS /tmp).
+            root = Path(temporary).resolve()
+            home = root / 'home'
+            target = root / 'outside'
             home.mkdir()
             target.mkdir()
             link = home / 'link'
